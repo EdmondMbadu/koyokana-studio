@@ -1,0 +1,244 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Script</h1>
+      <p class="page-sub">The sentences speakers read aloud. Write numbers as words — digits are flagged.</p>
+    </div>
+    <div class="row">
+      <button class="btn btn-secondary" (click)="exportCsv()" [disabled]="exporting()">
+        @if (exporting()) { <span class="spinner"></span> } @else { <app-icon name="download" [size]="15" /> }
+        Export CSV
+      </button>
+      <button class="btn btn-primary" (click)="openImport()"><app-icon name="plus" [size]="15" /> Import sentences</button>
+    </div>
+  </header>
+
+  <div class="stat-grid" style="margin-bottom: 24px">
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="file" [size]="14" /> Sentences</div>
+      <div class="stat-value">{{ stats.totalSentences().toLocaleString() }}</div>
+      <div class="stat-foot">≈ {{ scriptTime() }} of reading</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="mic" [size]="14" /> Left to record</div>
+      <div class="stat-value">{{ stats.openSentences().toLocaleString() }}</div>
+      <div class="stat-foot">Open in the queue</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="check" [size]="14" /> Recorded</div>
+      <div class="stat-value">{{ recordedCount().toLocaleString() }}</div>
+      <div class="stat-foot">At least one take</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="layers" [size]="14" /> Categories</div>
+      <div class="stat-value">{{ categories().length }}</div>
+      <div class="stat-foot truncate">{{ categories().slice(0, 4).join(', ') || '—' }}</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="segmented">
+      <button [class.active]="status() === 'all'" (click)="setStatus('all')">All</button>
+      <button [class.active]="status() === 'open'" (click)="setStatus('open')">Open</button>
+      <button [class.active]="status() === 'recorded'" (click)="setStatus('recorded')">Recorded</button>
+    </div>
+    <select class="select select-sm cat" [ngModel]="category()" (ngModelChange)="setCategory($event)" aria-label="Category">
+      <option value="">All categories</option>
+      @for (c of categories(); track c) {
+        <option [value]="c">{{ c }}</option>
+      }
+    </select>
+    <span class="spacer"></span>
+    <div class="input-group search">
+      <app-icon name="search" [size]="15" />
+      <input class="input input-sm" placeholder="Filter loaded sentences" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
+  </div>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="card-body stack" style="gap: 14px">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="skeleton" style="height: 14px" [style.width.%]="90 - i * 8"></div>
+        }
+      </div>
+    } @else if (error(); as e) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="alert" [size]="20" /></div>
+        <h3>Couldn’t load the script</h3>
+        <p class="mono">{{ e }}</p>
+        <button class="btn btn-secondary btn-sm" (click)="reload()">Retry</button>
+      </div>
+    } @else if (!rows().length) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="file" [size]="20" /></div>
+        <h3>No sentences yet</h3>
+        <p>Import a text file with one sentence per line, or a CSV with <span class="mono">text</span> and <span class="mono">category</span> columns.</p>
+        <button class="btn btn-primary btn-sm" (click)="openImport()"><app-icon name="plus" [size]="14" /> Import sentences</button>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 88px">#</th>
+              <th>Sentence</th>
+              <th style="width: 140px">Category</th>
+              <th style="width: 120px">Status</th>
+              <th class="num" style="width: 72px">Takes</th>
+              <th style="width: 84px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of filtered(); track s.id) {
+              <tr>
+                <td class="mono muted">{{ $index + 1 }}</td>
+                <td class="sentence" lang="ln">
+                  {{ s.text }}
+                  @if (s.hasDigits) {
+                    <span class="badge badge-amber tiny" title="Write numbers as words">Digits</span>
+                  }
+                </td>
+                <td><span class="badge">{{ s.category }}</span></td>
+                <td>
+                  @if (s.status === 'recorded') {
+                    <span class="badge badge-green"><span class="dot"></span> Recorded</span>
+                  } @else {
+                    <span class="badge"><span class="dot" style="opacity: 0.4"></span> Open</span>
+                  }
+                </td>
+                <td class="num">{{ s.recordCount }}</td>
+                <td>
+                  <div class="row actions">
+                    <button class="icon-btn" (click)="openEdit(s)" title="Edit"><app-icon name="pencil" [size]="14" /></button>
+                    <button class="icon-btn danger" (click)="remove(s)" title="Delete"><app-icon name="trash" [size]="14" /></button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="muted" style="text-align: center; padding: 28px">No loaded sentences match “{{ search() }}”.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (hasMore()) {
+        <div class="more">
+          <button class="btn btn-ghost btn-sm" (click)="loadMore()" [disabled]="loadingMore()">
+            @if (loadingMore()) { <span class="spinner"></span> } Load more
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+@if (importOpen()) {
+  <div class="overlay" (click)="closeImport()">
+    <div class="dialog dialog-lg" role="dialog" aria-modal="true" aria-labelledby="imp-title" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title" id="imp-title">Import sentences</div>
+          <p class="dialog-sub">Paste text (one sentence per line) or upload a .txt / .csv / .tsv file.</p>
+        </div>
+        <button class="icon-btn" (click)="closeImport()" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body stack">
+        <div class="row wrap" style="gap: 12px">
+          <label class="btn btn-secondary btn-sm file-btn">
+            <app-icon name="upload" [size]="14" /> Choose file
+            <input type="file" accept=".txt,.csv,.tsv,text/plain,text/csv" (change)="onFile($event)" hidden />
+          </label>
+          @if (importFileName()) {
+            <span class="hint mono">{{ importFileName() }}</span>
+          }
+          <span class="spacer"></span>
+          <div class="field inline">
+            <label for="imp-cat">Default category</label>
+            <input id="imp-cat" class="input input-sm" list="cat-list" style="width: 180px" [ngModel]="importCategory()" (ngModelChange)="importCategory.set($event)" />
+            <datalist id="cat-list">
+              @for (c of categories(); track c) { <option [value]="c"></option> }
+            </datalist>
+          </div>
+        </div>
+
+        <textarea class="textarea mono import-area" rows="10" spellcheck="false"
+          placeholder="Mbote! Ozali malamu?&#10;Nazali awa mpo na kosalisa yo.&#10;Niongo na yo ezali mille cinq cents francs."
+          [ngModel]="importText()" (ngModelChange)="importText.set($event)"></textarea>
+
+        @if (parsed(); as p) {
+          @if (p.lines.length) {
+            <div class="summary">
+              <div><b>{{ p.lines.length.toLocaleString() }}</b> sentences</div>
+              <div>≈ <b>{{ p.readTime }}</b> to read</div>
+              <div><b>{{ p.categories.length }}</b> categor{{ p.categories.length === 1 ? 'y' : 'ies' }}</div>
+              @if (p.duplicates) { <div class="muted">{{ p.duplicates }} duplicates removed</div> }
+              @if (p.tooShort) { <div class="muted">{{ p.tooShort }} too short, skipped</div> }
+            </div>
+            @if (p.digits.length) {
+              <div class="warn">
+                <app-icon name="alert" [size]="15" />
+                <div>
+                  <b>{{ p.digits.length }} sentence{{ p.digits.length === 1 ? ' contains' : 's contain' }} digits.</b>
+                  Speakers will read them, but the text must say exactly what is spoken — consider writing numbers out as words.
+                  <ul>
+                    @for (d of p.digits.slice(0, 3); track $index) { <li class="truncate">{{ d.text }}</li> }
+                  </ul>
+                </div>
+              </div>
+            }
+            @if (p.long) {
+              <p class="hint">{{ p.long }} sentence{{ p.long === 1 ? ' is' : 's are' }} over 250 characters — long takes are harder to record cleanly.</p>
+            }
+          } @else {
+            <p class="hint">
+              Tip: a CSV with a header row <span class="mono">text,category</span> sets categories per sentence.
+            </p>
+          }
+        }
+
+        @if (importing()) {
+          <div class="progress"><span [style.width.%]="importProgress() * 100"></span></div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="closeImport()" [disabled]="importing()">Cancel</button>
+        <button class="btn btn-primary" (click)="runImport()" [disabled]="importing() || !parsed().lines.length">
+          @if (importing()) { <span class="spinner"></span> Importing… } @else { Import {{ parsed().lines.length ? parsed().lines.length.toLocaleString() : '' }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editing(); as s) {
+  <div class="overlay" (click)="editing.set(null)">
+    <div class="dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title">Edit sentence</div>
+          @if (s.recordCount > 0) {
+            <p class="dialog-sub">Already recorded {{ s.recordCount }}×. Existing clips keep the text they were recorded with.</p>
+          }
+        </div>
+        <button class="icon-btn" (click)="editing.set(null)" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body stack">
+        <div class="field">
+          <label for="ed-text">Text</label>
+          <textarea id="ed-text" class="textarea" rows="4" [ngModel]="editText()" (ngModelChange)="editText.set($event)"></textarea>
+        </div>
+        <div class="field">
+          <label for="ed-cat">Category</label>
+          <input id="ed-cat" class="input" list="cat-list-2" [ngModel]="editCategory()" (ngModelChange)="editCategory.set($event)" />
+          <datalist id="cat-list-2">
+            @for (c of categories(); track c) { <option [value]="c"></option> }
+          </datalist>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="editing.set(null)">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="savingEdit() || !editText().trim()">Save</button>
+      </div>
+    </div>
+  </div>
+}

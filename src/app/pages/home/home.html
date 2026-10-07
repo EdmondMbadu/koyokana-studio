@@ -1,0 +1,201 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Mbote, {{ auth.firstName() }}</h1>
+      <p class="page-sub">Here’s where the Lingala voice stands today.</p>
+    </div>
+    <div class="row">
+      @if (auth.isReviewer()) {
+        <a class="btn btn-secondary" routerLink="/review">
+          <app-icon name="waves" [size]="15" /> Review queue
+          @if (stats.pendingClips() > 0) { <span class="count-pill">{{ stats.pendingClips() }}</span> }
+        </a>
+      }
+      <a class="btn btn-primary" routerLink="/record"><app-icon name="mic" [size]="15" /> Start recording</a>
+    </div>
+  </header>
+
+  @if (showOnboarding()) {
+    <section class="card onboarding">
+      <div class="ob-head">
+        <h2 class="section-title">Get the studio running</h2>
+        <p class="hint">Four steps from an empty project to your first training run.</p>
+      </div>
+      <ol class="steps">
+        <li [class.done]="stats.totalSentences() > 0">
+          <span class="step-dot">@if (stats.totalSentences() > 0) { <app-icon name="check" [size]="12" /> } @else { 1 }</span>
+          <div><b>Import the script</b><span>Sentences speakers will read</span></div>
+          <a class="btn btn-secondary btn-sm" routerLink="/script">Script</a>
+        </li>
+        <li [class.done]="stats.totalClips() > 0">
+          <span class="step-dot">@if (stats.totalClips() > 0) { <app-icon name="check" [size]="12" /> } @else { 2 }</span>
+          <div><b>Record your first takes</b><span>48 kHz · 24-bit, no processing</span></div>
+          <a class="btn btn-secondary btn-sm" routerLink="/record">Record</a>
+        </li>
+        <li>
+          <span class="step-dot">3</span>
+          <div><b>Review and approve</b><span>Only approved clips enter datasets</span></div>
+          <a class="btn btn-secondary btn-sm" routerLink="/review">Review</a>
+        </li>
+        <li>
+          <span class="step-dot">4</span>
+          <div><b>Freeze a dataset</b><span>Then plan a run on Vertex AI</span></div>
+          <a class="btn btn-secondary btn-sm" routerLink="/datasets">Datasets</a>
+        </li>
+      </ol>
+    </section>
+  }
+
+  <!-- Goal hero -->
+  <section class="card hero">
+    <div class="hero-main">
+      <div class="eyebrow">Approved audio</div>
+      <div class="hero-value tabular">
+        @if (stats.loaded()) {
+          {{ approvedAmount().value }}<small>{{ approvedAmount().unit }}</small>
+        } @else {
+          <span class="skeleton" style="display: inline-block; width: 120px; height: 44px"></span>
+        }
+      </div>
+      <p class="hero-sub">
+        @if (approvedH() >= maxGoal) {
+          Every milestone reached — {{ stats.approvedClips().toLocaleString() }} approved clips.
+        } @else {
+          <b>{{ formatDuration(toNext() * 3600) }}</b> to the {{ nextGoal() }}-hour milestone ·
+          {{ stats.approvedClips().toLocaleString() }} approved clips
+        }
+      </p>
+    </div>
+    <div class="track-wrap">
+      <div class="track" role="img" [attr.aria-label]="hoursFmt(stats.approvedSec()) + ' of ' + maxGoal + ' hours approved'">
+        <span class="recorded" [style.width.%]="recordedPct()"></span>
+        <span class="approved" [style.width.%]="approvedPct()"></span>
+        @for (g of goals; track g) {
+          <span class="milestone" [style.left.%]="(g / maxGoal) * 100" [class.reached]="approvedH() >= g">
+            <span class="ms-label">{{ g }} h</span>
+          </span>
+        }
+      </div>
+      <div class="legend">
+        <span><i class="sw approved-sw"></i> Approved</span>
+        <span><i class="sw recorded-sw"></i> Recorded, incl. pending review</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="stat-grid">
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="mic" [size]="14" /> Recorded</div>
+      <div class="stat-value">{{ recordedAmount().value }}<small>{{ recordedAmount().unit }}</small></div>
+      <div class="stat-foot">{{ stats.totalClips().toLocaleString() }} clips in total</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="waves" [size]="14" /> Awaiting review</div>
+      <div class="stat-value">{{ stats.pendingClips().toLocaleString() }}</div>
+      <div class="stat-foot">{{ stats.rejectedClips().toLocaleString() }} rejected so far</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="file" [size]="14" /> Sentences left</div>
+      <div class="stat-value">{{ stats.openSentences().toLocaleString() }}</div>
+      <div class="stat-foot">of {{ stats.totalSentences().toLocaleString() }} in the script</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label"><app-icon name="calendar" [size]="14" /> Last 7 days</div>
+      <div class="stat-value">{{ weekLabel() }}</div>
+      <div class="stat-foot">{{ activeDays() }} active day{{ activeDays() === 1 ? '' : 's' }} in two weeks</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <section class="card chart-card">
+      <div class="card-header">
+        <div>
+          <h2 class="section-title">Minutes recorded per day</h2>
+          <p class="hint">Last 14 days, all speakers</p>
+        </div>
+      </div>
+      <div class="chart" (mouseleave)="hover.set(null)">
+        <div class="y-axis">
+          <span>{{ chartMax() }}</span>
+          <span>{{ chartMax() / 2 }}</span>
+          <span>0</span>
+        </div>
+        <div class="plot">
+          <div class="gridline" style="top: 0"></div>
+          <div class="gridline" style="top: 50%"></div>
+          <div class="bars">
+            @for (d of days(); track d.key) {
+              <button class="bar-col" (mouseenter)="hover.set(d)" (focus)="hover.set(d)" (blur)="hover.set(null)"
+                [attr.aria-label]="d.label + ': ' + d.minutes + ' minutes, ' + d.clips + ' clips'">
+                <span class="bar" [class.today]="d.isToday" [class.zero]="d.minutes === 0" [style.height.%]="barHeight(d)"></span>
+                @if (hover() === d) {
+                  <span class="tip" role="tooltip">
+                    <b>{{ d.label }}</b>
+                    <span>{{ d.minutes }} min · {{ d.clips }} clips</span>
+                  </span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+        <div></div>
+        <div class="x-axis">
+          @for (d of days(); track d.key) {
+            <span [class.today]="d.isToday">{{ d.weekday }}</span>
+          }
+        </div>
+      </div>
+      @if (daysLoaded() && activeDays() === 0) {
+        <p class="chart-empty">No recordings in the last two weeks yet.</p>
+      }
+    </section>
+
+    @if (auth.isAdmin()) {
+      <section class="card side-list">
+        <div class="card-header">
+          <h2 class="section-title">Latest datasets & runs</h2>
+          <a class="btn btn-ghost btn-sm" routerLink="/training">All runs <app-icon name="arrow-right" [size]="13" /></a>
+        </div>
+        @if (!datasets().length && !runs().length) {
+          <div class="empty" style="padding: 32px 20px">
+            <p>Freeze a dataset once you have approved clips — it will show up here with its training runs.</p>
+            <a class="btn btn-secondary btn-sm" routerLink="/datasets">Go to datasets</a>
+          </div>
+        } @else {
+          <ul class="mini">
+            @for (d of datasets(); track d.id) {
+              <li>
+                <a routerLink="/datasets">
+                  <app-icon name="database" [size]="14" />
+                  <span class="mono">{{ d.name }}</span>
+                  <span class="spacer"></span>
+                  <span class="muted tabular">{{ amount(d.durationSec) }} · {{ relativeTime(d.createdAt) }}</span>
+                </a>
+              </li>
+            }
+            @for (r of runs(); track r.id) {
+              <li>
+                <a routerLink="/training">
+                  <app-icon name="cpu" [size]="14" />
+                  <span class="mono truncate">{{ r.name }}</span>
+                  <span class="spacer"></span>
+                  <span class="badge" [class]="'badge ' + statusOf(r.status).cls">{{ statusOf(r.status).label }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    } @else {
+      <section class="card side-list tips">
+        <div class="card-header"><h2 class="section-title">Recording tips</h2></div>
+        <ul>
+          <li><b>Same setup every time.</b> Same mic, distance and room — consistency matters more than perfection.</li>
+          <li><b>Read like you talk.</b> Warm and natural, the way you’d speak to a client on the phone.</li>
+          <li><b>Say exactly what’s written.</b> If you slip, retake — or flag it in review.</li>
+          <li><b>Rest your voice.</b> About two hours a day keeps your voice consistent.</li>
+        </ul>
+      </section>
+    }
+  </div>
+</div>

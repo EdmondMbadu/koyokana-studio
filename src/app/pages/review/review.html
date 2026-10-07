@@ -1,0 +1,197 @@
+<div class="review">
+  <section class="list-col">
+    <header class="list-head">
+      <div>
+        <h1 class="page-title">Review</h1>
+        <p class="page-sub">Listen, then approve or reject each take. Rejected sentences go back to the recording queue.</p>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div class="segmented" role="tablist">
+        @for (t of tabs(); track t.value) {
+          <button role="tab" [class.active]="status() === t.value" (click)="setStatus(t.value)">
+            {{ t.label }} <span class="count">{{ t.count }}</span>
+          </button>
+        }
+      </div>
+      <span class="spacer"></span>
+      <label class="switch small">
+        <input type="checkbox" [checked]="flaggedOnly()" (change)="setFlagged($any($event.target).checked)" />
+        <span class="track"></span> Flagged only
+      </label>
+      @if (speakers().length > 1) {
+        <select class="select select-sm speaker" [ngModel]="speakerId()" (ngModelChange)="setSpeaker($event)" aria-label="Speaker">
+          <option value="">All speakers</option>
+          @for (s of speakers(); track s.uid) {
+            <option [value]="s.uid">{{ s.speaker?.name || s.displayName }}</option>
+          }
+        </select>
+      }
+    </div>
+
+    <div class="card list">
+      @if (loading()) {
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+          <div class="row-item skel">
+            <div class="skeleton" style="height: 13px; width: 70%"></div>
+            <div class="skeleton" style="height: 11px; width: 35%; margin-top: 8px"></div>
+          </div>
+        }
+      } @else if (error(); as err) {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="alert" [size]="20" /></div>
+          <h3>Couldn’t load clips</h3>
+          <p class="mono">{{ err }}</p>
+          <button class="btn btn-secondary btn-sm" (click)="reload()">Retry</button>
+        </div>
+      } @else if (!clips().length) {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="waves" [size]="20" /></div>
+          @if (status() === 'pending' && !flaggedOnly() && !speakerId()) {
+            <h3>All caught up</h3>
+            <p>New recordings will appear here as soon as they upload.</p>
+          } @else {
+            <h3>No clips match</h3>
+            <p>Try a different filter.</p>
+          }
+        </div>
+      } @else {
+        @for (c of clips(); track c.id) {
+          <button class="row-item" [class.active]="c.id === selectedId()" [attr.data-clip]="c.id" (click)="select(c.id)">
+            <span class="dot" [class]="'dot ' + c.status" [title]="c.status"></span>
+            <span class="ri-main">
+              <span class="ri-text">{{ c.text }}</span>
+              <span class="ri-meta">
+                <span>{{ c.speakerName }}</span>
+                <span>·</span>
+                <span class="tabular">{{ formatDuration(c.durationSec) }}</span>
+                <span>·</span>
+                <span>{{ relativeTime(c.createdAt) }}</span>
+                @if (c.textEdited) {
+                  <span class="badge badge-blue tiny">Edited</span>
+                }
+              </span>
+            </span>
+            @if (c.qc.flags.length) {
+              <span class="flag-count" [title]="c.qc.flags.join(', ')">
+                <app-icon name="flag" [size]="12" /> {{ c.qc.flags.length }}
+              </span>
+            }
+          </button>
+        }
+        @if (hasMore()) {
+          <div class="more">
+            <button class="btn btn-ghost btn-sm" (click)="loadMore()" [disabled]="loadingMore()">
+              @if (loadingMore()) { <span class="spinner"></span> } Load more
+            </button>
+          </div>
+        }
+      }
+    </div>
+  </section>
+
+  <aside class="detail-col">
+    @if (selected(); as c) {
+      <div class="card detail">
+        <div class="d-head">
+          <span class="badge" [class.badge-green]="c.status === 'approved'" [class.badge-red]="c.status === 'rejected'"
+            [class.badge-amber]="c.status === 'pending'">
+            <span class="dot"></span> {{ c.status | titlecase }}
+          </span>
+          <span class="muted mono" style="font-size: 12px">{{ selectedIndex() + 1 }} / {{ clips().length }}{{ hasMore() ? '+' : '' }}</span>
+          <span class="spacer"></span>
+          <button class="icon-btn" (click)="move(-1)" title="Previous (K)"><app-icon name="chevron-up" /></button>
+          <button class="icon-btn" (click)="move(1)" title="Next (J)"><app-icon name="chevron-down" /></button>
+        </div>
+
+        @if (editing()) {
+          <div class="field">
+            <textarea id="clip-text" class="textarea d-textarea" rows="4" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)"></textarea>
+            <div class="row" style="justify-content: flex-end">
+              <span class="hint" style="margin-right: auto">Write exactly what was said. <span class="kbd">Enter</span> to save</span>
+              <button class="btn btn-ghost btn-sm" (click)="editing.set(false)">Cancel</button>
+              <button class="btn btn-primary btn-sm" (click)="saveText()" [disabled]="saving()">Save</button>
+            </div>
+          </div>
+        } @else {
+          <p class="d-text" lang="ln">{{ c.text }}</p>
+          @if (c.textEdited) {
+            <p class="d-original"><span class="muted">Script:</span> {{ c.originalText }}</p>
+          }
+        }
+
+        <div class="d-player">
+          <button class="play-btn" (click)="wave.toggle()" [disabled]="!audioUrl()" [attr.aria-label]="wave.playing() ? 'Pause' : 'Play'">
+            <app-icon [name]="wave.playing() ? 'pause' : 'play'" [size]="14" />
+          </button>
+          <app-waveform #wave class="d-wave" [src]="audioUrl()" [height]="64" />
+        </div>
+        @if (urlError(); as e) {
+          <p class="form-error"><app-icon name="alert" [size]="14" /> {{ e }}</p>
+        }
+
+        <div class="metrics">
+          <div><span>Duration</span><b class="tabular">{{ formatDuration(c.durationSec) }}</b></div>
+          <div><span>Peak</span><b class="tabular">{{ c.qc.peakDb }} dB</b></div>
+          <div><span>Speech level</span><b class="tabular">{{ c.qc.rmsDb }} dB</b></div>
+          <div><span>Pace</span><b class="tabular">{{ c.qc.charsPerSec }} ch/s</b></div>
+          <div><span>Lead / tail</span><b class="tabular">{{ c.qc.leadingSilence }} / {{ c.qc.trailingSilence }} s</b></div>
+          <div><span>Format</span><b>{{ c.sampleRate / 1000 }} kHz · {{ c.bitDepth }}-bit</b></div>
+        </div>
+
+        @if (c.qc.flags.length) {
+          <div class="flags">
+            @for (f of c.qc.flags; track f) {
+              <span class="badge" [class.badge-red]="f === 'clipping' || f === 'no_speech'" [class.badge-amber]="f !== 'clipping' && f !== 'no_speech'"
+                [title]="QC_LABELS[f].hint">{{ flagLabel(f) }}</span>
+            }
+          </div>
+        }
+
+        <div class="field">
+          <label for="note">Note <span class="muted" style="font-weight: 400">(optional)</span></label>
+          <input id="note" class="input input-sm" placeholder="e.g. mispronounced “mbongo”" [ngModel]="note()" (ngModelChange)="note.set($event)" />
+        </div>
+
+        <div class="d-actions">
+          <button class="btn btn-secondary" (click)="decide('rejected')" [disabled]="saving()">
+            <app-icon name="x" [size]="15" /> Reject <span class="kbd">X</span>
+          </button>
+          <button class="btn btn-primary" (click)="decide('approved')" [disabled]="saving()">
+            <app-icon name="check" [size]="15" /> Approve <span class="kbd dark">A</span>
+          </button>
+        </div>
+
+        <div class="d-foot">
+          <button class="btn btn-ghost btn-sm" (click)="startEdit()"><app-icon name="pencil" [size]="13" /> Edit transcript <span class="kbd">E</span></button>
+          @if (c.status !== 'pending') {
+            <button class="btn btn-ghost btn-sm" (click)="decide('pending')"><app-icon name="retake" [size]="13" /> Reset <span class="kbd">U</span></button>
+          }
+          <span class="spacer"></span>
+          @if (auth.isAdmin()) {
+            <button class="icon-btn danger" (click)="remove()" title="Delete clip"><app-icon name="trash" [size]="15" /></button>
+          }
+        </div>
+
+        @if (c.reviewedByName && c.status !== 'pending') {
+          <p class="hint">Reviewed by {{ c.reviewedByName }} · {{ relativeTime(c.reviewedAt) }}</p>
+        }
+      </div>
+
+      <div class="kb-card">
+        <label class="switch small">
+          <input type="checkbox" [checked]="autoplay()" (change)="toggleAutoplay($any($event.target).checked)" />
+          <span class="track"></span> Auto-play next clip
+        </label>
+        <span class="spacer"></span>
+        <span class="hint"><span class="kbd">J</span> <span class="kbd">K</span> move · <span class="kbd">Space</span> play</span>
+      </div>
+    } @else if (!loading()) {
+      <div class="card detail empty-detail">
+        <app-icon name="waves" [size]="20" />
+        <p>Select a clip to review it.</p>
+      </div>
+    }
+  </aside>
+</div>

@@ -1,0 +1,261 @@
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  min-height: 100vh;
+}
+
+.pane-form {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 40px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-brand .name {
+  font-weight: 650;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.auth-brand .tag {
+  font-size: 11px;
+  color: var(--text-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.form-wrap {
+  width: 100%;
+  max-width: 380px;
+  margin: auto;
+  padding: 48px 0;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.subtitle {
+  margin: 8px 0 28px;
+  color: var(--text-3);
+  font-size: 14.5px;
+}
+
+.google {
+  font-weight: 500;
+}
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-3);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--text);
+}
+
+.link.strong {
+  color: var(--text);
+  font-weight: 550;
+  font-size: inherit;
+}
+
+.link.strong:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.switch-mode {
+  margin-top: 22px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13.5px;
+}
+
+.legal {
+  font-size: 12px;
+  color: var(--text-4);
+  text-align: center;
+}
+
+/* ───────── visual pane */
+
+.pane-visual {
+  position: relative;
+  margin: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #f4f3ef;
+  display: grid;
+  place-items: center;
+}
+
+.glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(40% 35% at 30% 30%, rgba(0, 127, 255, 0.14), transparent 70%),
+    radial-gradient(35% 30% at 75% 70%, rgba(206, 16, 33, 0.1), transparent 70%),
+    radial-gradient(30% 25% at 70% 25%, rgba(247, 214, 24, 0.16), transparent 70%);
+  filter: blur(10px);
+}
+
+.visual-inner {
+  position: relative;
+  width: min(440px, 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.big-orb {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: var(--orb);
+  box-shadow: inset 0 -18px 36px rgba(0, 0, 0, 0.18), 0 30px 60px -20px rgba(0, 80, 179, 0.45);
+  animation: breathe 6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.04) rotate(8deg);
+  }
+}
+
+.prompt-card {
+  width: 100%;
+  margin-top: -26px;
+  padding: 18px 20px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+
+.pc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.15);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.pc-text {
+  margin: 12px 0 14px;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.pc-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 36px;
+}
+
+.pc-wave span {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--text);
+  transform-origin: center;
+  animation: bar 1.6s ease-in-out infinite;
+}
+
+@keyframes bar {
+  50% {
+    transform: scaleY(0.45);
+  }
+}
+
+.tagline {
+  margin-top: 40px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.tagline-sub {
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 15px;
+  max-width: 340px;
+}
+
+@media (max-width: 960px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+
+  .pane-visual {
+    display: none;
+  }
+
+  .pane-form {
+    padding: 24px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .big-orb,
+  .pc-wave span,
+  .rec-dot {
+    animation: none;
+  }
+}

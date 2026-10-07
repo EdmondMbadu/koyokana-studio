@@ -1,0 +1,266 @@
+<div class="record">
+  <section class="stage">
+    <header class="stage-head">
+      <div>
+        <h1 class="page-title">Record</h1>
+        <p class="page-sub">Read each sentence naturally — the way you’d speak to a client on the phone.</p>
+      </div>
+      <div class="row wrap head-controls">
+        @if (categories().length) {
+          <select class="select select-sm cat" [ngModel]="category()" (ngModelChange)="setCategory($event)"
+            [disabled]="recorder.recording()" aria-label="Category">
+            <option value="">All categories</option>
+            @for (c of categories(); track c) {
+              <option [value]="c">{{ c }}</option>
+            }
+          </select>
+        }
+        <div class="session-chip" title="This session">
+          <app-icon name="clock" [size]="14" />
+          <span class="tabular">{{ sessionClock() }}</span>
+          <span class="sep"></span>
+          <span class="tabular">{{ sessionClips() }} clips</span>
+          <span class="sep"></span>
+          <span class="tabular">{{ formatDuration(sessionSeconds()) }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Prompt -->
+    <div class="card prompt" [class.is-recording]="phase() === 'recording'">
+      @if (loadingQueue() && !current()) {
+        <div class="prompt-skeleton">
+          <div class="skeleton" style="height: 14px; width: 120px"></div>
+          <div class="skeleton" style="height: 28px; width: 92%; margin-top: 22px"></div>
+          <div class="skeleton" style="height: 28px; width: 64%; margin-top: 12px"></div>
+        </div>
+      } @else if (queueError(); as err) {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="alert" [size]="20" /></div>
+          <h3>Couldn’t load sentences</h3>
+          <p class="mono">{{ err }}</p>
+          <button class="btn btn-secondary btn-sm" (click)="reloadQueue()"><app-icon name="refresh" [size]="14" /> Retry</button>
+        </div>
+      } @else if (current(); as s) {
+        <div class="prompt-meta">
+          <span class="muted left-count tabular">{{ stats.openSentences().toLocaleString() }} left</span>
+          @if (s.category) {
+            <span class="badge">{{ s.category }}</span>
+          }
+          @if (takeNumber() > 1) {
+            <span class="badge badge-outline">Take {{ takeNumber() }}</span>
+          }
+          @if (s.hasDigits) {
+            <span class="badge badge-amber" title="Contains digits — read numbers as words">
+              <app-icon name="alert" [size]="12" /> Digits
+            </span>
+          }
+          <span class="spacer"></span>
+          <button class="btn btn-ghost btn-sm" (click)="skip()" [disabled]="phase() === 'recording'">
+            Skip <span class="kbd">S</span>
+          </button>
+        </div>
+        <p class="prompt-text" [class]="'prompt-text size-' + promptSize()" lang="ln">{{ s.text }}</p>
+        @if (upcoming(); as n) {
+          <p class="next"><span class="muted">Next</span> {{ n.text }}</p>
+        }
+      } @else {
+        <div class="empty">
+          <div class="empty-icon"><app-icon name="check" [size]="20" /></div>
+          @if (skipped().length) {
+            <h3>You’ve reached the end</h3>
+            <p>{{ skipped().length }} skipped sentence{{ skipped().length === 1 ? '' : 's' }} still need a recording.</p>
+            <button class="btn btn-primary btn-sm" (click)="restoreSkipped()">Record skipped sentences</button>
+          } @else {
+            <h3>No sentences left to record</h3>
+            @if (auth.isAdmin()) {
+              <p>Import more sentences to keep going.</p>
+              <a class="btn btn-primary btn-sm" routerLink="/script"><app-icon name="plus" [size]="14" /> Add sentences</a>
+            } @else {
+              <p>Ask an admin to add more sentences to the script.</p>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Take -->
+    <div class="card take" [class.recording]="phase() === 'recording'">
+      @switch (recorder.state()) {
+        @case ('ready') {
+          @switch (phase()) {
+            @case ('recording') {
+              <div class="take-head">
+                <span class="rec-dot"></span>
+                <span class="rec-label">Recording</span>
+                <span class="spacer"></span>
+                <span class="mono tabular">{{ clock(recorder.elapsed()) }}</span>
+                <span class="muted mono">/ {{ clock(MAX) }}</span>
+              </div>
+              <app-live-bars class="live" [level]="recorder.level()" [active]="true" color="#e5484d" />
+            }
+            @case ('review') {
+              <div class="take-head">
+                <button class="play-btn" (click)="wave.toggle()" [attr.aria-label]="wave.playing() ? 'Pause' : 'Play'">
+                  <app-icon [name]="wave.playing() ? 'pause' : 'play'" [size]="14" />
+                </button>
+                <span class="mono tabular">{{ clock(wave.progress() * (take()?.duration ?? 0)) }}</span>
+                <span class="muted mono">/ {{ formatDuration(take()?.duration) }}</span>
+                <span class="spacer"></span>
+                @if (flags().length === 0) {
+                  <span class="badge badge-green"><app-icon name="check" [size]="12" /> Looks good</span>
+                } @else {
+                  @for (f of flags(); track f) {
+                    <span class="badge" [class.badge-red]="f === 'clipping' || f === 'no_speech'"
+                      [class.badge-amber]="f !== 'clipping' && f !== 'no_speech'" [title]="QC_LABELS[f].hint">
+                      {{ flagLabel(f) }}
+                    </span>
+                  }
+                }
+              </div>
+              <app-waveform #wave [samples]="take()?.samples ?? null" [sampleRate]="take()?.sampleRate ?? 48000" [height]="84" />
+              @if (qc(); as q) {
+                <div class="qc-line">
+                  <span>Peak <b class="tabular">{{ q.peakDb }} dB</b></span>
+                  <span>Speech <b class="tabular">{{ q.rmsDb }} dB</b></span>
+                  <span>Lead <b class="tabular">{{ q.leadingSilence }} s</b></span>
+                  <span>Tail <b class="tabular">{{ q.trailingSilence }} s</b></span>
+                  <span>Pace <b class="tabular">{{ q.charsPerSec }} ch/s</b></span>
+                </div>
+              }
+            }
+            @default {
+              <div class="idle">
+                <app-live-bars class="live faint" [level]="recorder.level()" [active]="true" color="#c9c9c9" />
+                <p class="idle-hint">Press <span class="kbd">Space</span> to start recording</p>
+              </div>
+            }
+          }
+        }
+        @case ('requesting') {
+          <div class="mic-state"><span class="spinner"></span> Waiting for microphone permission…</div>
+        }
+        @default {
+          @if (recorder.state() !== 'idle') {
+            <div class="mic-state error">
+              <app-icon [name]="recorder.state() === 'denied' ? 'mic-off' : 'alert'" [size]="18" />
+              <span>{{ recorder.error() }}</span>
+              <button class="btn btn-secondary btn-sm" (click)="retryMic()">Retry</button>
+            </div>
+          } @else {
+            <div class="mic-state"><span class="spinner"></span> Starting microphone…</div>
+          }
+        }
+      }
+    </div>
+
+    <!-- Transport -->
+    <div class="transport">
+      <button class="btn btn-secondary" (click)="discardTake()" [disabled]="phase() !== 'review'">
+        <app-icon name="retake" [size]="15" /> Retake <span class="kbd">R</span>
+      </button>
+
+      <button class="rec-btn" [class.on]="phase() === 'recording'" (click)="toggleRecord()"
+        [disabled]="!micReady() || !current() || stopping()"
+        [attr.aria-label]="phase() === 'recording' ? 'Stop recording' : 'Start recording'">
+        <app-icon [name]="phase() === 'recording' ? 'stop' : 'record'" [size]="phase() === 'recording' ? 22 : 26" />
+      </button>
+
+      <button class="btn btn-primary" (click)="accept()" [disabled]="phase() !== 'review' || blocking()">
+        Accept <span class="kbd dark">↵</span>
+      </button>
+    </div>
+    <p class="transport-hint">
+      @switch (phase()) {
+        @case ('recording') { <span class="kbd">Space</span> stop · <span class="kbd">Esc</span> cancel }
+        @case ('review') {
+          @if (blocking()) { No speech detected — retake this sentence. }
+          @else { <span class="kbd">Enter</span> accept · <span class="kbd">P</span> play · <span class="kbd">Space</span> record again }
+        }
+        @default { <span class="kbd">Space</span> record · <span class="kbd">S</span> skip }
+      }
+    </p>
+  </section>
+
+  <aside class="side">
+    <div class="card side-card">
+      <div class="side-title"><app-icon name="mic" [size]="15" /> Microphone</div>
+      <select class="select select-sm" [ngModel]="recorder.trackSettings()?.deviceId ?? ''" (ngModelChange)="selectMic($event)"
+        [disabled]="recorder.recording() || !recorder.devices().length" aria-label="Microphone">
+        @if (!recorder.devices().length) {
+          <option value="">Default microphone</option>
+        }
+        @for (d of recorder.devices(); track d.deviceId) {
+          <option [value]="d.deviceId">{{ d.label || 'Microphone' }}</option>
+        }
+      </select>
+      <app-level-meter [level]="micReady() ? recorder.level() : -120" />
+      <div class="spec">
+        <span>{{ recorder.sampleRate() ? recorder.sampleRate() / 1000 + ' kHz' : '—' }}</span>
+        <span>24-bit</span>
+        <span>Mono</span>
+        <span>WAV</span>
+      </div>
+      @if (recorder.processingOff() === true) {
+        <p class="ok-line"><app-icon name="check" [size]="13" /> Raw signal — no noise suppression or auto-gain</p>
+      } @else if (recorder.processingOff() === false) {
+        <p class="warn-line"><app-icon name="alert" [size]="13" /> This browser is still processing the mic signal. Use Chrome for clean recordings.</p>
+      }
+      <p class="hint">Aim for peaks inside the green band (−18 to −6 dB).</p>
+    </div>
+
+    <div class="card side-card">
+      <div class="side-title"><app-icon name="volume" [size]="15" /> Playback</div>
+      <label class="switch">
+        <input type="checkbox" [checked]="autoplay()" (change)="toggleAutoplay($any($event.target).checked)" />
+        <span class="track"></span>
+        Play each take after stopping
+      </label>
+    </div>
+
+    <div class="card side-card">
+      <div class="side-title">
+        <app-icon name="upload-cloud" [size]="15" /> Uploads
+        <span class="spacer"></span>
+        @if (uploads.failedCount() > 1) {
+          <button class="btn btn-ghost btn-sm" (click)="uploads.retryAll()">Retry all</button>
+        }
+      </div>
+      @if (!uploads.visible().length) {
+        <p class="hint">Accepted takes upload in the background while you keep recording.</p>
+      } @else {
+        <ul class="uploads">
+          @for (j of uploads.visible(); track j.id) {
+            <li [class]="j.status">
+              <span class="u-icon">
+                @switch (j.status) {
+                  @case ('done') { <app-icon name="check" [size]="13" /> }
+                  @case ('failed') { <app-icon name="alert" [size]="13" /> }
+                  @default { <span class="spinner" style="width: 12px; height: 12px"></span> }
+                }
+              </span>
+              <span class="u-text truncate" [title]="j.error || j.clip.text">{{ j.status === 'failed' ? j.error : j.clip.text }}</span>
+              @if (j.status === 'failed') {
+                <button class="icon-btn" (click)="uploads.retry(j.id)" title="Retry"><app-icon name="refresh" [size]="13" /></button>
+              } @else if (j.status === 'uploading') {
+                <span class="u-pct tabular">{{ (j.progress * 100).toFixed(0) }}%</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="card side-card">
+      <div class="side-title"><app-icon name="keyboard" [size]="15" /> Shortcuts</div>
+      <dl class="keys">
+        <dt><span class="kbd">Space</span></dt><dd>Record / stop</dd>
+        <dt><span class="kbd">Enter</span></dt><dd>Accept take</dd>
+        <dt><span class="kbd">R</span></dt><dd>Retake</dd>
+        <dt><span class="kbd">P</span></dt><dd>Play / pause</dd>
+        <dt><span class="kbd">S</span></dt><dd>Skip sentence</dd>
+        <dt><span class="kbd">Esc</span></dt><dd>Cancel recording</dd>
+      </dl>
+    </div>
+  </aside>
+</div>

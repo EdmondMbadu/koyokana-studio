@@ -1,0 +1,131 @@
+rules_version = '2';
+
+// Koyokana Studio — Firestore security rules.
+// Roles live in users/{uid}.role: admin | reviewer | recorder | pending | disabled.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───────── helpers
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Workspace owners become admin on first sign-in (keep in sync with environment.ts).
+    function isOwnerEmail() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in ['mbadungoma@gmail.com'];
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return hasProfile() ? userDoc().data.role : 'none';
+    }
+
+    function isAdmin()    { return signedIn() && role() == 'admin'; }
+    function isReviewer() { return signedIn() && role() in ['admin', 'reviewer']; }
+    function isMember()   { return signedIn() && role() in ['admin', 'reviewer', 'recorder']; }
+
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // ───────── users
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isMember());
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && (request.resource.data.role == 'pending'
+            || (request.resource.data.role == 'admin' && isOwnerEmail()));
+
+      allow update: if signedIn() && (
+        // Anyone may edit their own profile fields — never their role.
+        (request.auth.uid == uid
+          && changedOnly(['displayName', 'photoURL', 'lastSeenAt', 'speaker', 'updatedAt']))
+        // The verified owner may promote themselves.
+        || (request.auth.uid == uid && isOwnerEmail()
+          && changedOnly(['role', 'updatedAt'])
+          && request.resource.data.role == 'admin')
+        // Admins manage everyone else's role.
+        || (isAdmin() && request.auth.uid != uid
+          && changedOnly(['role', 'updatedAt'])
+          && request.resource.data.role in ['admin', 'reviewer', 'recorder', 'pending', 'disabled'])
+      );
+
+      allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+
+    // ───────── script
+
+    match /sentences/{id} {
+      allow read: if isMember();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isMember()
+          && changedOnly(['status', 'recordCount', 'lastRecordedAt', 'lastRecordedBy'])
+          && request.resource.data.status in ['open', 'recorded']);
+    }
+
+    match /meta/{doc} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
+    // ───────── recordings
+
+    match /clips/{id} {
+      allow read: if isMember();
+
+      allow create: if isMember()
+        && request.resource.data.speakerId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.storagePath == 'recordings/' + request.auth.uid + '/' + id + '.wav'
+        && request.resource.data.durationSec is number
+        && request.resource.data.durationSec > 0
+        && request.resource.data.durationSec <= 120
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0;
+
+      allow update: if isReviewer()
+        && changedOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedByName', 'reviewedAt', 'text', 'textEdited'])
+        && request.resource.data.status in ['pending', 'approved', 'rejected']
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewedBy'])
+            || request.resource.data.reviewedBy == request.auth.uid);
+
+      allow delete: if isAdmin();
+    }
+
+    match /daily/{day} {
+      allow read: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.keys().hasOnly(['date', 'clips', 'seconds', 'updatedAt'])
+        && request.resource.data.date == day;
+    }
+
+    // ───────── training
+
+    match /datasets/{id} {
+      allow read: if isMember();
+      allow create: if isAdmin() && request.resource.data.name == id;
+      allow update: if isAdmin() && changedOnly(['notes']);
+      allow delete: if isAdmin();
+    }
+
+    match /runs/{id} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+  }
+}

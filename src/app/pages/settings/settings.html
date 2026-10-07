@@ -1,0 +1,128 @@
+<div class="page narrow">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Settings</h1>
+      <p class="page-sub">Your profile and the speaker details attached to every clip you record.</p>
+    </div>
+  </header>
+
+  <section class="card block">
+    <div class="block-head">
+      <h2 class="section-title">Profile</h2>
+      <p class="hint">How you appear to the team.</p>
+    </div>
+    <div class="block-body">
+      <div class="row" style="gap: 14px; margin-bottom: 18px">
+        <span class="avatar avatar-lg">
+          @if (auth.profile()?.photoURL; as src) { <img [src]="src" alt="" referrerpolicy="no-referrer" /> } @else { {{ auth.initials() }} }
+        </span>
+        <div>
+          <div style="font-weight: 600">{{ auth.displayName() }}</div>
+          <div class="muted" style="font-size: 13px">{{ auth.user()?.email }}</div>
+        </div>
+        <span class="spacer"></span>
+        <span class="badge badge-outline" [title]="roleInfo()?.description ?? ''">{{ roleInfo()?.label }}</span>
+      </div>
+      <div class="field">
+        <label for="s-name">Display name</label>
+        <input id="s-name" class="input" [ngModel]="displayName()" (ngModelChange)="displayName.set($event)" />
+      </div>
+    </div>
+  </section>
+
+  <section class="card block">
+    <div class="block-head">
+      <h2 class="section-title">Speaker profile</h2>
+      <p class="hint">Saved with each recording and written into dataset manifests. Helps balance voices later.</p>
+    </div>
+    <div class="block-body form-grid">
+      <div class="field">
+        <label for="sp-name">Speaker name</label>
+        <input id="sp-name" class="input" [ngModel]="speaker().name" (ngModelChange)="setSpeaker('name', $event)" />
+      </div>
+      <div class="field">
+        <label for="sp-gender">Gender</label>
+        <select id="sp-gender" class="select" [ngModel]="speaker().gender" (ngModelChange)="setSpeaker('gender', $event)">
+          <option value="">Prefer not to say</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sp-age">Age range</label>
+        <select id="sp-age" class="select" [ngModel]="speaker().ageRange" (ngModelChange)="setSpeaker('ageRange', $event)">
+          <option value="">Prefer not to say</option>
+          @for (a of ['18-24', '25-34', '35-44', '45-54', '55-64', '65+']; track a) {
+            <option [value]="a">{{ a }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="sp-region">Where you learned Lingala</label>
+        <input id="sp-region" class="input" placeholder="e.g. Kinshasa — Lingwala" [ngModel]="speaker().region" (ngModelChange)="setSpeaker('region', $event)" />
+      </div>
+      <div class="field full">
+        <label for="sp-langs">Languages you speak</label>
+        <input id="sp-langs" class="input" placeholder="Lingala, French, Kikongo" [ngModel]="speaker().languages" (ngModelChange)="setSpeaker('languages', $event)" />
+      </div>
+    </div>
+    <div class="block-foot">
+      <span class="hint">{{ dirty() ? 'You have unsaved changes.' : 'All changes saved.' }}</span>
+      <button class="btn btn-primary" (click)="save()" [disabled]="saving() || !dirty()">
+        @if (saving()) { <span class="spinner"></span> } Save changes
+      </button>
+    </div>
+  </section>
+
+  <section class="card block">
+    <div class="block-head">
+      <h2 class="section-title">Account</h2>
+    </div>
+    <div class="block-body">
+      <dl class="kv">
+        <dt>Email</dt>
+        <dd>
+          {{ auth.user()?.email }}
+          @if (auth.emailVerified()) {
+            <span class="badge badge-green tiny"><app-icon name="check" [size]="11" /> Verified</span>
+          } @else {
+            <span class="badge badge-amber tiny">Unverified</span>
+          }
+        </dd>
+        <dt>Sign-in</dt>
+        <dd>{{ providers().join(', ') || '—' }}</dd>
+        @if (hasPassword()) {
+          <dt>Password</dt>
+          <dd>
+            <button class="btn btn-secondary btn-sm" (click)="resetPassword()" [disabled]="sendingReset()">
+              @if (sendingReset()) { <span class="spinner"></span> } Email me a reset link
+            </button>
+          </dd>
+        }
+      </dl>
+    </div>
+    <div class="block-foot">
+      <span class="spacer"></span>
+      <button class="btn btn-secondary" (click)="auth.signOut()"><app-icon name="logout" [size]="14" /> Sign out</button>
+    </div>
+  </section>
+
+  @if (auth.isAdmin()) {
+    <section class="card block">
+      <div class="block-head">
+        <h2 class="section-title">Workspace</h2>
+        <p class="hint">Where the studio stores its data on Google Cloud.</p>
+      </div>
+      <div class="block-body">
+        <dl class="kv">
+          <dt>Project</dt><dd class="mono">{{ workspace.project }}</dd>
+          <dt>Audio bucket</dt><dd class="mono">gs://{{ workspace.bucket }}</dd>
+          <dt>Recordings</dt><dd class="mono">gs://{{ workspace.bucket }}/recordings/&lt;uid&gt;/&lt;clip&gt;.wav</dd>
+          <dt>Datasets</dt><dd class="mono">gs://{{ workspace.bucket }}/datasets/&lt;name&gt;/manifest.jsonl</dd>
+          <dt>Training region</dt><dd class="mono">{{ workspace.region }}</dd>
+        </dl>
+      </div>
+    </section>
+  }
+</div>

@@ -1,0 +1,238 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Datasets</h1>
+      <p class="page-sub">Frozen, versioned snapshots of approved clips. Every training run points to exactly one.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()"><app-icon name="plus" [size]="15" /> New dataset</button>
+  </header>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="card-body stack" style="gap: 14px">
+        @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 16px; width: 80%"></div> }
+      </div>
+    } @else if (error(); as e) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="alert" [size]="20" /></div>
+        <h3>Couldn’t load datasets</h3>
+        <p class="mono">{{ e }}</p>
+      </div>
+    } @else if (!datasets().length) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="database" [size]="20" /></div>
+        <h3>No datasets yet</h3>
+        <p>Once you have approved clips, freeze them into a dataset. The manifest lands in Cloud Storage, ready for a Vertex AI job.</p>
+        <button class="btn btn-primary btn-sm" (click)="openCreate()"><app-icon name="plus" [size]="14" /> New dataset</button>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Task</th>
+              <th class="num">Clips</th>
+              <th class="num">Audio</th>
+              <th class="num">Train / eval</th>
+              <th>Speakers</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of datasets(); track d.id) {
+              <tr class="clickable" (click)="open(d)">
+                <td><span class="mono name">{{ d.name }}</span></td>
+                <td><span class="badge" [class.badge-violet]="d.task === 'tts'" [class.badge-blue]="d.task === 'stt'">{{ d.task.toUpperCase() }}</span></td>
+                <td class="num">{{ d.clipCount.toLocaleString() }}</td>
+                <td class="num">{{ amount(d.durationSec) }}</td>
+                <td class="num muted">{{ d.trainCount.toLocaleString() }} / {{ d.evalCount.toLocaleString() }}</td>
+                <td class="muted">{{ d.speakers.length }}</td>
+                <td class="muted">{{ relativeTime(d.createdAt) }}</td>
+                <td>
+                  <div class="row" style="justify-content: flex-end">
+                    <button class="icon-btn" (click)="$event.stopPropagation(); copy(d.manifestUri)" title="Copy gs:// URI"><app-icon name="copy" [size]="14" /></button>
+                    <button class="icon-btn" (click)="$event.stopPropagation(); downloadManifest(d)" title="Open manifest"><app-icon name="download" [size]="14" /></button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (createOpen()) {
+  <div class="overlay" (click)="closeCreate()">
+    <div class="dialog dialog-lg" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title">New dataset</div>
+          <p class="dialog-sub">Snapshot approved clips into an immutable manifest.</p>
+        </div>
+        <button class="icon-btn" (click)="closeCreate()" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="ds-name">Name</label>
+            <input id="ds-name" class="input mono" [ngModel]="name()" (ngModelChange)="name.set($event.toLowerCase())" />
+            @if (name() && !nameValid()) {
+              <span class="hint" style="color: var(--red)">Lowercase letters, numbers, dots, dashes — 2 to 48 characters.</span>
+            } @else {
+              <span class="hint">Used as the folder name in Cloud Storage.</span>
+            }
+          </div>
+          <div class="field">
+            <span class="label">Task</span>
+            <div class="segmented" style="align-self: flex-start">
+              <button [class.active]="task() === 'tts'" (click)="setTask('tts')">Text-to-speech</button>
+              <button [class.active]="task() === 'stt'" (click)="setTask('stt')">Speech-to-text</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="ds-speaker">Speakers</label>
+            <select id="ds-speaker" class="select" [ngModel]="speakerId()" (ngModelChange)="speakerId.set($event); invalidate()">
+              <option value="">All speakers</option>
+              @for (s of speakers(); track s.uid) {
+                <option [value]="s.uid">{{ s.speaker?.name || s.displayName }}</option>
+              }
+            </select>
+            @if (task() === 'tts') {
+              <span class="hint">A single-voice TTS model wants one speaker.</span>
+            }
+          </div>
+          <div class="field">
+            <label for="ds-eval">Eval split</label>
+            <div class="row">
+              <input id="ds-eval" class="input" type="number" min="0" max="50" step="1" style="width: 90px"
+                [ngModel]="evalPercent()" (ngModelChange)="evalPercent.set(+$event); invalidate()" />
+              <span class="muted">% held out (deterministic per clip)</span>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Clip length</span>
+            <div class="row">
+              <input class="input" type="number" min="0" step="0.5" style="width: 90px" aria-label="Minimum seconds"
+                [ngModel]="minDuration()" (ngModelChange)="minDuration.set(+$event); invalidate()" />
+              <span class="muted">to</span>
+              <input class="input" type="number" min="1" step="0.5" style="width: 90px" aria-label="Maximum seconds"
+                [ngModel]="maxDuration()" (ngModelChange)="maxDuration.set(+$event); invalidate()" />
+              <span class="muted">seconds</span>
+            </div>
+          </div>
+          <div class="field" style="justify-content: flex-end">
+            <label class="switch">
+              <input type="checkbox" [checked]="includeFlagged()" (change)="includeFlagged.set($any($event.target).checked); invalidate()" />
+              <span class="track"></span> Include clips with QC flags
+            </label>
+          </div>
+          <div class="field full">
+            <label for="ds-notes">Notes</label>
+            <input id="ds-notes" class="input" placeholder="What changed since the last version?" [ngModel]="notes()" (ngModelChange)="notes.set($event)" />
+          </div>
+        </div>
+
+        <div class="scan">
+          @if (scanning()) {
+            <div class="row"><span class="spinner"></span> Scanning approved clips… <span class="tabular muted">{{ scanProgress().toLocaleString() }}</span></div>
+          } @else if (scan(); as s) {
+            <div class="scan-grid">
+              <div><span>Clips</span><b class="tabular">{{ s.clips.length.toLocaleString() }}</b></div>
+              <div><span>Audio</span><b class="tabular">{{ formatDuration(s.durationSec) }}</b></div>
+              <div><span>Train / eval</span><b class="tabular">{{ (s.clips.length - s.evalCount).toLocaleString() }} / {{ s.evalCount.toLocaleString() }}</b></div>
+              <div><span>Speakers</span><b class="tabular">{{ s.speakers.length }}</b></div>
+            </div>
+            <p class="hint">
+              Scanned {{ s.scanned.toLocaleString() }} approved clips · excluded {{ s.excludedFlagged }} flagged and {{ s.excludedDuration }} outside the length range.
+            </p>
+            @if (!s.clips.length) {
+              <p class="form-error"><app-icon name="alert" [size]="14" /> No clips match these filters.</p>
+            } @else if (s.evalCount === 0) {
+              <p class="hint" style="color: var(--amber)">No clips landed in the eval split — fine for a smoke test, but raise the split or add data before comparing runs.</p>
+            }
+          } @else {
+            <p class="hint">Scan to preview what goes into the dataset before freezing it.</p>
+          }
+        </div>
+
+        @if (createError(); as e) {
+          <p class="form-error" style="margin-top: 12px"><app-icon name="alert" [size]="14" /> {{ e }}</p>
+        }
+      </div>
+
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="runScan()" [disabled]="scanning() || freezing()">
+          <app-icon name="search" [size]="14" /> {{ scan() ? 'Rescan' : 'Scan clips' }}
+        </button>
+        <span class="spacer"></span>
+        <button class="btn btn-primary" (click)="freeze()" [disabled]="!scan()?.clips?.length || !nameValid() || freezing()">
+          @if (freezing()) { <span class="spinner"></span> Freezing… } @else { <app-icon name="lock" [size]="14" /> Freeze dataset }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selected(); as d) {
+  <div class="overlay drawer-overlay" (click)="selected.set(null)">
+    <div class="drawer" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title mono">{{ d.name }}</div>
+          <p class="dialog-sub">Frozen {{ relativeTime(d.createdAt) }} by {{ d.createdByName }}</p>
+        </div>
+        <button class="icon-btn" (click)="selected.set(null)" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body stack">
+        <div class="scan-grid">
+          <div><span>Task</span><b>{{ d.task.toUpperCase() }}</b></div>
+          <div><span>Clips</span><b class="tabular">{{ d.clipCount.toLocaleString() }}</b></div>
+          <div><span>Audio</span><b class="tabular">{{ formatDuration(d.durationSec) }}</b></div>
+          <div><span>Train / eval</span><b class="tabular">{{ d.trainCount }} / {{ d.evalCount }}</b></div>
+        </div>
+
+        <div class="field">
+          <span class="label">Manifest</span>
+          <div class="uri">
+            <code class="mono truncate">{{ d.manifestUri }}</code>
+            <button class="icon-btn" (click)="copy(d.manifestUri)" title="Copy"><app-icon name="copy" [size]="14" /></button>
+            <button class="icon-btn" (click)="downloadManifest(d)" title="Open"><app-icon name="external" [size]="14" /></button>
+          </div>
+          <span class="hint">JSON Lines: id, audio (gs://), text, speaker, duration, sample_rate, split.</span>
+        </div>
+
+        <div class="field">
+          <span class="label">Filters</span>
+          <dl class="kv">
+            <dt>Speakers</dt><dd>{{ speakerName(d.filters.speakerId) }}</dd>
+            <dt>QC flags</dt><dd>{{ d.filters.includeFlagged ? 'Included' : 'Excluded' }}</dd>
+            <dt>Clip length</dt><dd>{{ d.filters.minDuration }}–{{ d.filters.maxDuration }} s</dd>
+            <dt>Eval split</dt><dd>{{ d.filters.evalPercent }}%</dd>
+          </dl>
+        </div>
+
+        <div class="field">
+          <span class="label">Speakers</span>
+          <ul class="speakers">
+            @for (s of d.speakers; track s.id) {
+              <li><span>{{ s.name }}</span><span class="tabular muted">{{ s.clips.toLocaleString() }} clips</span></li>
+            }
+          </ul>
+        </div>
+
+        <div class="field">
+          <label for="dn">Notes</label>
+          <textarea id="dn" class="textarea" rows="3" [ngModel]="detailNotes()" (ngModelChange)="detailNotes.set($event)"></textarea>
+          <div class="row" style="justify-content: flex-end">
+            <button class="btn btn-secondary btn-sm" (click)="saveNotes()" [disabled]="savingNotes() || detailNotes() === d.notes">Save notes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

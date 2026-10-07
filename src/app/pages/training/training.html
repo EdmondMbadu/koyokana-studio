@@ -1,0 +1,208 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Training</h1>
+      <p class="page-sub">The run registry. Plan a run, launch it on Vertex AI with the generated command, then log its job ID and scores here.</p>
+    </div>
+    <div class="row">
+      <a class="btn btn-secondary" [href]="consoleUrl" target="_blank" rel="noopener"><app-icon name="external" [size]="14" /> Vertex AI console</a>
+      <button class="btn btn-primary" (click)="openCreate()" [disabled]="!datasets().length"><app-icon name="plus" [size]="15" /> Plan run</button>
+    </div>
+  </header>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="card-body stack" style="gap: 14px">
+        @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 16px; width: 80%"></div> }
+      </div>
+    } @else if (error(); as e) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="alert" [size]="20" /></div>
+        <h3>Couldn’t load runs</h3>
+        <p class="mono">{{ e }}</p>
+      </div>
+    } @else if (!runs().length) {
+      <div class="empty">
+        <div class="empty-icon"><app-icon name="cpu" [size]="20" /></div>
+        <h3>No runs yet</h3>
+        @if (datasets().length) {
+          <p>Plan your first run from a frozen dataset. You’ll get a ready-to-paste <span class="mono">gcloud</span> command.</p>
+          <button class="btn btn-primary btn-sm" (click)="openCreate()"><app-icon name="plus" [size]="14" /> Plan run</button>
+        } @else {
+          <p>Freeze a dataset first — every run trains on exactly one dataset version.</p>
+        }
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Run</th>
+              <th>Status</th>
+              <th>Dataset</th>
+              <th>Base model</th>
+              <th>Hardware</th>
+              <th>Scores</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of runs(); track r.id) {
+              <tr class="clickable" (click)="open(r)">
+                <td><span class="mono name">{{ r.name }}</span></td>
+                <td><span class="badge" [class]="'badge ' + statusOf(r.status).cls"><span class="dot"></span> {{ statusOf(r.status).label }}</span></td>
+                <td><span class="mono muted">{{ r.datasetName }}</span></td>
+                <td class="muted">{{ modelLabel(r.baseModel) }}</td>
+                <td class="muted">{{ machineLabel(r.machine) }}</td>
+                <td class="tabular">{{ metricsSummary(r) }}</td>
+                <td class="muted">{{ relativeTime(r.createdAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (createOpen()) {
+  <div class="overlay" (click)="createOpen.set(false)">
+    <div class="dialog dialog-lg" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title">Plan a training run</div>
+          <p class="dialog-sub">Records the exact dataset, model and settings before anything runs.</p>
+        </div>
+        <button class="icon-btn" (click)="createOpen.set(false)" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="r-ds">Dataset</label>
+            <select id="r-ds" class="select" [ngModel]="datasetId()" (ngModelChange)="onDatasetChange($event)">
+              @for (d of datasets(); track d.id) {
+                <option [value]="d.id">{{ d.name }} · {{ d.task.toUpperCase() }} · {{ amount(d.durationSec) }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label for="r-name">Run name</label>
+            <input id="r-name" class="input mono" [ngModel]="runName()" (ngModelChange)="runName.set($event)" />
+          </div>
+          <div class="field">
+            <label for="r-model">Base model</label>
+            <select id="r-model" class="select" [ngModel]="baseModel()" (ngModelChange)="baseModel.set($event)">
+              @for (m of models(); track m.id) {
+                <option [value]="m.id">{{ m.label }}</option>
+              }
+            </select>
+            <span class="hint mono">{{ baseModel() }}</span>
+          </div>
+          <div class="field">
+            <label for="r-machine">Hardware</label>
+            <select id="r-machine" class="select" [ngModel]="machineId()" (ngModelChange)="machineId.set($event)">
+              @for (m of machines; track m.id) {
+                <option [value]="m.id">{{ m.label }} · {{ m.approxHourly }}</option>
+              }
+            </select>
+            <span class="hint">On-demand estimate; check your region’s pricing.</span>
+          </div>
+          <div class="field full">
+            <span class="label">Hyperparameters</span>
+            <div class="hp">
+              <label>Epochs <input class="input input-sm" type="number" min="1" [ngModel]="epochs()" (ngModelChange)="epochs.set(+$event)" /></label>
+              <label>Learning rate <input class="input input-sm mono" type="number" step="any" [ngModel]="learningRate()" (ngModelChange)="learningRate.set(+$event)" /></label>
+              <label>Batch size <input class="input input-sm" type="number" min="1" [ngModel]="batchSize()" (ngModelChange)="batchSize.set(+$event)" /></label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="r-git">Training code commit</label>
+            <input id="r-git" class="input mono" placeholder="e.g. 3f2a9c1" [ngModel]="gitCommit()" (ngModelChange)="gitCommit.set($event)" />
+          </div>
+          <div class="field">
+            <label for="r-notes">Notes</label>
+            <input id="r-notes" class="input" placeholder="Hypothesis for this run" [ngModel]="runNotes()" (ngModelChange)="runNotes.set($event)" />
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="createOpen.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="create()" [disabled]="creating() || !dataset() || !runName().trim()">
+          @if (creating()) { <span class="spinner"></span> } Plan run
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (selected(); as r) {
+  <div class="overlay drawer-overlay" (click)="selected.set(null)">
+    <div class="drawer" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title mono">{{ r.name }}</div>
+          <p class="dialog-sub">{{ modelLabel(r.baseModel) }} on <span class="mono">{{ r.datasetName }}</span> · planned {{ relativeTime(r.createdAt) }} by {{ r.createdByName }}</p>
+        </div>
+        <button class="icon-btn" (click)="selected.set(null)" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body stack">
+        <div class="field">
+          <div class="row" style="justify-content: space-between">
+            <span class="label">Launch command</span>
+            <button class="btn btn-ghost btn-sm" (click)="copy(command(r))"><app-icon name="copy" [size]="13" /> Copy</button>
+          </div>
+          <pre class="cmd mono">{{ command(r) }}</pre>
+          <span class="hint">
+            Expects a training image at <span class="mono">{{ r.task }}-train:latest</span> in Artifact Registry that reads the manifest and writes checkpoints to the output URI.
+          </span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="d-status">Status</label>
+            <select id="d-status" class="select" [ngModel]="edit().status" (ngModelChange)="patch('status', $event)">
+              @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="d-job">Vertex AI job ID</label>
+            <input id="d-job" class="input mono" placeholder="e.g. 1234567890123456789" [ngModel]="edit().vertexJobId" (ngModelChange)="patch('vertexJobId', $event)" />
+          </div>
+          <div class="field full">
+            <label for="d-out">Output URI</label>
+            <input id="d-out" class="input mono" [ngModel]="edit().outputUri" (ngModelChange)="patch('outputUri', $event)" />
+          </div>
+          <div class="field full">
+            <span class="label">Scores</span>
+            <div class="hp">
+              <label>WER <input class="input input-sm" inputmode="decimal" placeholder="0.18" [ngModel]="edit().wer" (ngModelChange)="patch('wer', $event)" /></label>
+              <label>CER <input class="input input-sm" inputmode="decimal" placeholder="0.06" [ngModel]="edit().cer" (ngModelChange)="patch('cer', $event)" /></label>
+              <label>MOS <input class="input input-sm" inputmode="decimal" placeholder="4.1" [ngModel]="edit().mos" (ngModelChange)="patch('mos', $event)" /></label>
+            </div>
+            <span class="hint">WER/CER for speech-to-text on the eval split; MOS (1–5) from native-speaker listening tests for TTS.</span>
+          </div>
+          <div class="field">
+            <label for="d-git">Code commit</label>
+            <input id="d-git" class="input mono" [ngModel]="edit().gitCommit" (ngModelChange)="patch('gitCommit', $event)" />
+          </div>
+          <div class="field">
+            <span class="label">Hyperparameters</span>
+            <p class="mono hp-read">epochs {{ r.hyperparams.epochs }} · lr {{ r.hyperparams.learningRate }} · batch {{ r.hyperparams.batchSize }}</p>
+          </div>
+          <div class="field full">
+            <label for="d-notes">Notes</label>
+            <textarea id="d-notes" class="textarea" rows="3" [ngModel]="edit().notes" (ngModelChange)="patch('notes', $event)"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-ghost danger-text" (click)="remove(r)"><app-icon name="trash" [size]="14" /> Delete</button>
+        <span style="flex: 1"></span>
+        <button class="btn btn-secondary" (click)="selected.set(null)">Close</button>
+        <button class="btn btn-primary" (click)="saveRun()" [disabled]="savingRun()">
+          @if (savingRun()) { <span class="spinner"></span> } Save
+        </button>
+      </div>
+    </div>
+  </div>
+}

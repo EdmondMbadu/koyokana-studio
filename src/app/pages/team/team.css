@@ -1,0 +1,69 @@
+section + section {
+  margin-top: 32px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.counts {
+  font-size: 13px;
+}
+
+.pending-section {
+  margin-bottom: 32px;
+}
+
+.pending-list {
+  border-color: #f0dcb8;
+  background: linear-gradient(180deg, #fffcf6, #fff);
+}
+
+.pending-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.pending-row:last-child {
+  border-bottom: 0;
+}
+
+.who {
+  flex: 1;
+  min-width: 200px;
+}
+
+.who-name {
+  font-weight: 550;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.who-email {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.badge.tiny {
+  height: 18px;
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.disabled-row td {
+  opacity: 0.55;
+}

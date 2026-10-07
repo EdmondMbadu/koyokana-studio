@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// Koyokana Studio — Cloud Storage security rules.
+// Roles are read from Firestore (users/{uid}.role).
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function role() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isMember() {
+      return request.auth != null && role() in ['admin', 'reviewer', 'recorder'];
+    }
+
+    function isAdmin() {
+      return request.auth != null && role() == 'admin';
+    }
+
+    // Raw takes: recordings/{uid}/{clipId}.wav — write-once by their speaker.
+    match /recordings/{uid}/{file} {
+      allow read: if isMember();
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && isMember()
+        && file.matches('[A-Za-z0-9]+\\.wav')
+        && request.resource.contentType == 'audio/wav'
+        && request.resource.size < 50 * 1024 * 1024;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Frozen dataset manifests.
+    match /datasets/{name}/{file} {
+      allow read: if isMember();
+      allow create: if isAdmin() && request.resource.size < 500 * 1024 * 1024;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Training outputs (written by Vertex AI service accounts, which bypass rules).
+    match /runs/{path=**} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
