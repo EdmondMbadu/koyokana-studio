@@ -42,8 +42,31 @@ The existing default Firestore database uses **Standard** edition in **nam5**
 
 ```bash
 npm install
+cp .env.example .env.local
+# Set FIREBASE_API_KEY in .env.local to your restricted Firebase browser key.
+npm run setup:hooks   # enables the local pre-commit credential check
 npm start            # http://localhost:4200
 ```
+
+`.env.local` and the generated `src/environments/firebase-key.local.ts` are ignored
+by Git. The `prestart`, `prebuild`, `prewatch`, and `predeploy` scripts generate the
+local key module before Angular runs. Production/development builds require a
+valid `FIREBASE_API_KEY`; they fail with setup instructions when it is missing.
+For CI builds, set `FIREBASE_API_KEY` through an encrypted CI secret/environment
+variable, then run `npm run build`. Never commit the generated file, local env
+files, service-account credentials, or build output.
+
+The Firebase web key is still visible to browsers in the compiled app, as required
+by the Firebase SDK. It identifies the project; Authentication and Security Rules
+control data access. Restrict the key to this app's Firebase APIs and allowed
+website referrers. The replacement key allows `localhost:4200`, `127.0.0.1:4200`,
+`koyokana-studio.firebaseapp.com`, and `koyokana-studio.web.app`; add explicit
+referrers before deploying to another domain.
+
+`npm run check:secrets` checks tracked files for Google API keys and private keys
+without printing their values. The local hook checks staged contents, and the
+GitHub Actions workflow runs the same check on pushes and pull requests. This is
+a focused check for these credential types, rather than a complete secret scanner.
 
 Sign in with **mbadungoma@gmail.com** — that account becomes **admin** automatically
 (Google sign-in, or email/password after verifying the address). Everyone else lands on
@@ -92,9 +115,12 @@ auto-gain are switched off. Chrome gives the cleanest signal.
 ```bash
 npm start                 # dev server against production Firebase
 npm run emulators         # local Firebase emulators (Java required)
-ng serve -c emulator      # dev server against the emulators
+npm run start:emulator    # dev server against the emulators (no production key needed)
+npm run build:emulator    # emulator build (no production key needed)
 npm run test:rules        # security-rules tests (starts emulators; Java required)
 npm test                  # unit tests (WAV encoder, QC analysis)
+node --test tests/configuration.test.mjs  # config and credential-check regression tests
+npm run check:secrets      # check tracked files for keys
 npm run deploy:auth       # initialize/configure Auth in koyokana-studio
 npm run deploy            # build + firebase deploy (hosting, rules, indexes, auth)
 ```

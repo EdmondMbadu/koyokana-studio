@@ -29,6 +29,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/firebase-key.ts",
+                  "with": "src/environments/firebase-key.local.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -44,6 +50,12 @@
               "outputHashing": "all"
             },
             "development": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/firebase-key.ts",
+                  "with": "src/environments/firebase-key.local.ts"
+                }
+              ],
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
@@ -84,6 +96,12 @@
           "builder": "@angular/build:karma",
           "options": {
             "tsConfig": "tsconfig.spec.json",
+            "fileReplacements": [
+              {
+                "replace": "src/environments/environment.ts",
+                "with": "src/environments/environment.emulator.ts"
+              }
+            ],
             "assets": [
               {
                 "glob": "**/*",

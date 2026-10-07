@@ -45,3 +45,8 @@ Thumbs.db
 # Firebase
 .firebase/
 *-debug.log
+
+# Local configuration and generated browser key
+.env*
+!.env.example
+/src/environments/firebase-key.local.ts

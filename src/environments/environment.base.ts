@@ -1,10 +1,11 @@
 import { AppEnvironment } from './environment.model';
+import { firebaseApiKey } from './firebase-key';
 
 export const baseEnvironment: AppEnvironment = {
   production: true,
   useEmulators: false,
   firebase: {
-    apiKey: 'AIzaSyAaqkN1QU9OvDXTW7k8H5Dn3og6gLexurc',
+    apiKey: firebaseApiKey,
     authDomain: 'koyokana-studio.firebaseapp.com',
     projectId: 'koyokana-studio',
     storageBucket: 'koyokana-studio.firebasestorage.app',

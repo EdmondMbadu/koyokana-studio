@@ -6,6 +6,13 @@ export const environment: AppEnvironment = {
   ...prod,
   production: false,
   useEmulators: true,
-  firebase: { ...prod.firebase, projectId: 'demo-koyokana', storageBucket: 'demo-koyokana.appspot.com' },
+  firebase: {
+    apiKey: 'demo-koyokana-key',
+    authDomain: 'demo-koyokana.firebaseapp.com',
+    projectId: 'demo-koyokana',
+    storageBucket: 'demo-koyokana.appspot.com',
+    messagingSenderId: '000000000000',
+    appId: '1:000000000000:web:demo-koyokana',
+  },
   gcp: { ...prod.gcp, projectId: 'demo-koyokana' },
 };
