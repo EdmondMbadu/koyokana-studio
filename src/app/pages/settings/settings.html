@@ -101,6 +101,31 @@
           </dd>
         }
       </dl>
+      @if (passwordNotice()) {
+        <p class="form-success" role="status">{{ passwordNotice() }}</p>
+      }
+      @if (!hasPassword() && auth.providerIds().includes('google.com')) {
+        <form class="stack" style="gap: 14px; margin-top: 20px" (submit)="addPassword($event)">
+          <h3 class="section-title">Add a password</h3>
+          <p class="hint">Keep your existing account and access. Confirm your Google account when prompted, then use either sign-in method.</p>
+          <div class="field">
+            <label for="account-password">New password</label>
+            <input id="account-password" class="input" type="password" autocomplete="new-password" name="newPassword"
+              [ngModel]="password()" (ngModelChange)="password.set($event)" [disabled]="addingPassword()" />
+          </div>
+          <div class="field">
+            <label for="account-password-confirm">Confirm new password</label>
+            <input id="account-password-confirm" class="input" type="password" autocomplete="new-password" name="confirmPassword"
+              [ngModel]="confirmPassword()" (ngModelChange)="confirmPassword.set($event)" [disabled]="addingPassword()" />
+          </div>
+          @if (passwordError()) {
+            <p class="form-error" role="alert">{{ passwordError() }}</p>
+          }
+          <button class="btn btn-primary" type="submit" [disabled]="addingPassword()">
+            @if (addingPassword()) { <span class="spinner"></span> } Add password
+          </button>
+        </form>
+      }
     </div>
     <div class="block-foot">
       <span class="spacer"></span>

@@ -75,6 +75,22 @@ Sign in with **mbadungoma@gmail.com** — that account becomes **admin** automat
 The owner list lives in two places that must match:
 `src/environments/environment.base.ts` → `ownerEmails` and `firestore.rules` → `isOwnerEmail()`.
 
+## Password sign-in and account emails
+
+Google sign-in creates the account. To use the same email with a password, sign in
+with Google and open **Settings → Account → Add a password**. Confirm the same
+Google account in the popup. The password is added to that existing user; the UID,
+profile and role are preserved. You can then use either sign-in method.
+
+Reset and verification emails use Firebase's built-in action handler at
+`https://koyokana-studio.firebaseapp.com/__/auth/action`.
+
+After rotating a Firebase browser key, update `.env.local`, build the app and
+deploy Hosting (`npm run build`, then `firebase deploy --only hosting --project
+koyokana-studio`). The Hosting deployment refreshes Firebase's cached email-link
+configuration. Request a fresh reset email afterward: previously sent links can
+still contain the revoked key. Do not restore a revoked key to make old links work.
+
 ## Roles
 
 | Role | Can |
@@ -118,6 +134,7 @@ npm run emulators         # local Firebase emulators (Java required)
 npm run start:emulator    # dev server against the emulators (no production key needed)
 npm run build:emulator    # emulator build (no production key needed)
 npm run test:rules        # security-rules tests (starts emulators; Java required)
+npm run test:auth         # password/link/reset integration tests (Auth emulator; no Java needed)
 npm test                  # unit tests (WAV encoder, QC analysis)
 node --test tests/configuration.test.mjs  # config and credential-check regression tests
 npm run check:secrets      # check tracked files for keys

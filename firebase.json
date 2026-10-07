@@ -16,6 +16,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
+    "site": "koyokana-studio",
     "public": "dist/koyokana-studio/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [{ "source": "**", "destination": "/index.html" }],

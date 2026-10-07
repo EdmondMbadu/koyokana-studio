@@ -6,12 +6,14 @@ import {
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reauthenticateWithPopup,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
+  updatePassword,
 } from 'firebase/auth';
 import { Unsubscribe, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { filter, firstValueFrom } from 'rxjs';
@@ -30,6 +32,8 @@ export class AuthService {
 
   /** Firebase user, or null when signed out. */
   readonly user = signal<User | null>(null);
+  readonly providerIds = signal<string[]>([]);
+  readonly hasPassword = computed(() => this.providerIds().includes('password'));
   /** Firestore profile (users/{uid}). */
   readonly profile = signal<UserProfile | null>(null);
   readonly emailVerified = signal(false);
@@ -121,6 +125,27 @@ export class AuthService {
     return sendPasswordResetEmail(auth, email.trim());
   }
 
+  /** Adds a password to the signed-in Google account, preserving its UID/profile. */
+  async addPassword(password: string): Promise<void> {
+    const u = auth.currentUser;
+    if (!u?.email) throw new Error('Sign in with Google before adding a password.');
+    if (u.providerData.some((p) => p.providerId === 'password')) {
+      throw new Error('This account already has a password. Use the reset link to change it.');
+    }
+    if (!u.providerData.some((p) => p.providerId === 'google.com')) {
+      throw new Error('Sign in with Google before adding a password.');
+    }
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await reauthenticateWithPopup(u, provider);
+    // The account already owns this email. Updating its password adds password
+    // sign-in without attempting another sign-up for the same address.
+    await updatePassword(u, password);
+    await u.reload();
+    await u.getIdToken(true);
+    this.providerIds.set(u.providerData.map((p) => p.providerId));
+  }
+
   async resendVerification(): Promise<void> {
     const u = auth.currentUser;
     if (u) await sendEmailVerification(u);
@@ -156,6 +181,7 @@ export class AuthService {
   // ───────────────────────────── internals
 
   private handleUser(u: User | null): void {
+    this.providerIds.set(u?.providerData.map((p) => p.providerId) ?? []);
     this.clearProfileLoadTimer();
     this.unsubProfile?.();
     this.unsubProfile = null;
@@ -288,9 +314,13 @@ export function authErrorMessage(err: unknown): string {
     case 'auth/invalid-email':
       return 'Enter a valid email address.';
     case 'auth/email-already-in-use':
-      return 'An account already exists with this email. Sign in instead.';
+      return 'An account already exists with this email. Sign in with Google, then add a password in Settings, or use Forgot password.';
     case 'auth/weak-password':
       return 'Use at least 8 characters for your password.';
+    case 'auth/requires-recent-login':
+      return 'Sign in again, then try changing your password.';
+    case 'auth/user-mismatch':
+      return 'Choose the same Google account you used to sign in to the studio.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a moment and try again.';
     case 'auth/network-request-failed':

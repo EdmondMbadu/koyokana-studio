@@ -5,6 +5,7 @@ import { AuthService, authErrorMessage } from '../../core/auth.service';
 import { bucketName } from '../../core/firebase';
 import { ROLES, SpeakerProfile } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { passwordProblem } from '../../core/password';
 import { Icon } from '../../ui/icon';
 
 @Component({
@@ -28,13 +29,18 @@ export class Settings {
   });
   protected readonly saving = signal(false);
   protected readonly sendingReset = signal(false);
+  protected readonly password = signal('');
+  protected readonly confirmPassword = signal('');
+  protected readonly addingPassword = signal(false);
+  protected readonly passwordError = signal('');
+  protected readonly passwordNotice = signal('');
   private loadedFor: string | null = null;
 
   protected readonly providers = computed(
-    () => this.auth.user()?.providerData.map((p) => (p.providerId === 'google.com' ? 'Google' : 'Email & password')) ?? [],
+    () => this.auth.providerIds().map((p) => (p === 'google.com' ? 'Google' : 'Email & password')),
   );
   protected readonly hasPassword = computed(
-    () => !!this.auth.user()?.providerData.some((p) => p.providerId === 'password'),
+    () => this.auth.hasPassword(),
   );
   protected readonly roleInfo = computed(() => ROLES.find((r) => r.value === this.auth.role()));
   protected readonly dirty = computed(() => {
@@ -116,6 +122,29 @@ export class Settings {
       this.toast.error(authErrorMessage(err));
     } finally {
       this.sendingReset.set(false);
+    }
+  }
+
+  protected async addPassword(event: Event) {
+    event.preventDefault();
+    if (this.addingPassword()) return;
+    this.passwordError.set('');
+    this.passwordNotice.set('');
+    const problem = passwordProblem(this.password(), this.confirmPassword());
+    if (problem) {
+      this.passwordError.set(problem);
+      return;
+    }
+    this.addingPassword.set(true);
+    try {
+      await this.auth.addPassword(this.password());
+      this.passwordNotice.set('Password added. You can now sign in with your email and password or with Google.');
+    } catch (err) {
+      this.passwordError.set(authErrorMessage(err));
+    } finally {
+      this.password.set('');
+      this.confirmPassword.set('');
+      this.addingPassword.set(false);
     }
   }
 }

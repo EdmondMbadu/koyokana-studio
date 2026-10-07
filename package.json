@@ -13,6 +13,7 @@
     "prewatch": "npm run configure:firebase",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:auth": "firebase emulators:exec --only auth --project demo-koyokana \"node --test tests/auth-password.test.mjs\"",
     "check:secrets": "node scripts/check-secrets.mjs",
     "setup:hooks": "git config core.hooksPath .githooks",
     "predeploy": "npm run configure:firebase",
