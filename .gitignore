@@ -50,3 +50,8 @@ Thumbs.db
 .env*
 !.env.example
 /src/environments/firebase-key.local.ts
+
+# Python training caches and local job specifications
+__pycache__/
+*.pyc
+koyokana-run-*.json

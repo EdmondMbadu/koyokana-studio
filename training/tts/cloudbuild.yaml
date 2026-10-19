@@ -1,0 +1,26 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['pull', '${_IMAGE}:candidate']
+    allowFailure: true
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '--cache-from', '${_IMAGE}:candidate', '-t', '${_IMAGE}:candidate', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', '${_IMAGE}:candidate']
+  - name: gcr.io/cloud-builders/docker
+    args: ['run', '--rm', '--shm-size=2g', '--entrypoint=python', '${_IMAGE}:candidate', '/app/smoke_test.py']
+  # Only a passing image gets the release tag.
+  - name: gcr.io/cloud-builders/docker
+    args: ['tag', '${_IMAGE}:candidate', '${_IMAGE}:${_TAG}']
+  - name: gcr.io/cloud-builders/docker
+    args: ['tag', '${_IMAGE}:candidate', '${_IMAGE}:latest']
+images:
+  - '${_IMAGE}:${_TAG}'
+  - '${_IMAGE}:latest'
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train
+  _TAG: v1.0.1
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s
+

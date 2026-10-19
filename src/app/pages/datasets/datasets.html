@@ -109,9 +109,9 @@
           <div class="field">
             <label for="ds-eval">Eval split</label>
             <div class="row">
-              <input id="ds-eval" class="input" type="number" min="0" max="50" step="1" style="width: 90px"
+              <input id="ds-eval" class="input" type="number" min="1" max="50" step="1" style="width: 90px"
                 [ngModel]="evalPercent()" (ngModelChange)="evalPercent.set(+$event); invalidate()" />
-              <span class="muted">% held out (deterministic per clip)</span>
+              <span class="muted">% held out (duplicate sentences and alternate takes stay together)</span>
             </div>
           </div>
           <div class="field">
@@ -153,7 +153,7 @@
             @if (!s.clips.length) {
               <p class="form-error"><app-icon name="alert" [size]="14" /> No clips match these filters.</p>
             } @else if (s.evalCount === 0) {
-              <p class="hint" style="color: var(--amber)">No clips landed in the eval split — fine for a smoke test, but raise the split or add data before comparing runs.</p>
+              <p class="hint" style="color: var(--amber)">No sentences landed in the eval split. Raise the percentage or add data, then scan again before freezing.</p>
             }
           } @else {
             <p class="hint">Scan to preview what goes into the dataset before freezing it.</p>

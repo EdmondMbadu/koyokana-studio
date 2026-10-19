@@ -123,7 +123,11 @@ auto-gain are switched off. Chrome gives the cleanest signal.
 1. **Datasets → New dataset**: scan approved clips, freeze → `manifest.jsonl` in Storage.
 2. **Training → Plan run**: pick the dataset, base model and GPU. The run drawer shows a
    ready-to-paste `gcloud ai custom-jobs create …` command. It expects a training image at
-   `us-central1-docker.pkg.dev/koyokana-studio/koyokana/{tts|stt}-train:latest`.
+   `us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train:v1.0.1` for TTS.
+   The TTS container, validation procedure and output contract are documented in
+   [training/tts/README.md](training/tts/README.md). The first TTS test uses the
+   published `UBC-NLP/Simba-TTS-lin` checkpoint; `facebook/mms-tts-lin` is unavailable.
+   STT container implementation is a later phase.
 3. Paste the Vertex AI job ID back into the run, then log WER/CER (STT) or MOS (TTS).
 
 ## Scripts

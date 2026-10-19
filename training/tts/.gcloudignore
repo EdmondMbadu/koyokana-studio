@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!.dockerignore
+!.gcloudignore
+!cloudbuild.yaml
+!requirements.txt
+!*.py
+!provenance.json
+!phone-phrases.json
+

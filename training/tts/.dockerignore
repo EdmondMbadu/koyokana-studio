@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!requirements.txt
+!*.py
+!provenance.json
+!phone-phrases.json
+

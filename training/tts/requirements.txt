@@ -1,0 +1,14 @@
+# PyTorch 2.2.2 + CUDA 12.1 are supplied by the base image.
+numpy==1.26.4
+transformers==4.45.1
+datasets[audio]==2.21.0
+accelerate==0.34.2
+huggingface-hub==0.25.2
+safetensors==0.4.5
+librosa==0.10.2.post1
+soundfile==0.12.1
+scipy==1.13.1
+matplotlib==3.8.4
+Cython==3.0.11
+google-cloud-storage==2.18.2
+

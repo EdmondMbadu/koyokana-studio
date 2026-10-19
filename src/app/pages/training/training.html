@@ -153,7 +153,11 @@
           </div>
           <pre class="cmd mono">{{ command(r) }}</pre>
           <span class="hint">
-            Expects a training image at <span class="mono">{{ r.task }}-train:latest</span> in Artifact Registry that reads the manifest and writes checkpoints to the output URI.
+            @if (r.task === 'tts') {
+              Uses the run’s pinned training image and stops after four hours. Exports model files, metrics, and real/baseline/trained samples. Freeze a new dataset and plan a new run if a preflight check fails.
+            } @else {
+              Expects <span class="mono">stt-train:latest</span>. The speech-to-text training container is a later phase.
+            }
           </span>
         </div>
 

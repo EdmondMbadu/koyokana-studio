@@ -11,6 +11,6 @@ export interface AppEnvironment {
     measurementId?: string;
   };
   ownerEmails: string[];
-  gcp: { projectId: string; region: string; artifactRepo: string };
+  gcp: { projectId: string; region: string; artifactRepo: string; ttsImageDigest?: string };
   goalsHours: number[];
 }

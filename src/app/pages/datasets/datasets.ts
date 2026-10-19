@@ -17,13 +17,14 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import { getBlob, ref, uploadString } from 'firebase/storage';
 import { AuthService } from '../../core/auth.service';
 import { bucketName, db, storage } from '../../core/firebase';
 import { audioAmount, formatDuration, hours, relativeTime } from '../../core/format';
 import { Clip, Dataset, DatasetTask, MEMBER_ROLES, UserProfile } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../ui/icon';
+import { datasetSplits } from '../../core/dataset-split';
 
 const SCAN_PAGE = 1000;
 const NAME_RE = /^[a-z0-9][a-z0-9._-]{1,47}$/;
@@ -62,7 +63,7 @@ export class Datasets {
   protected readonly includeFlagged = signal(false);
   protected readonly minDuration = signal(1);
   protected readonly maxDuration = signal(20);
-  protected readonly evalPercent = signal(2);
+  protected readonly evalPercent = signal(5);
   protected readonly notes = signal('');
   protected readonly scanning = signal(false);
   protected readonly scanProgress = signal(0);
@@ -121,11 +122,11 @@ export class Datasets {
   protected openCreate() {
     this.task.set('tts');
     this.name.set(this.suggestName('tts'));
-    this.speakerId.set('');
+    this.speakerId.set(this.auth.user()?.uid ?? '');
     this.includeFlagged.set(false);
     this.minDuration.set(1);
     this.maxDuration.set(20);
-    this.evalPercent.set(2);
+    this.evalPercent.set(5);
     this.notes.set('');
     this.scan.set(null);
     this.createError.set(null);
@@ -195,6 +196,7 @@ export class Datasets {
         bySpeaker.set(c.speakerId, s);
       }
       const pct = this.evalPercent();
+      const splits = datasetSplits(kept, pct);
       this.scan.set({
         clips: kept,
         durationSec: kept.reduce((a, c) => a + c.durationSec, 0),
@@ -202,7 +204,7 @@ export class Datasets {
         excludedDuration,
         scanned: all.length,
         speakers: [...bySpeaker.values()].sort((a, b) => b.clips - a.clips),
-        evalCount: kept.filter((c) => isEval(c.id, pct)).length,
+        evalCount: kept.filter((c) => splits.get(c.id) === 'eval').length,
       });
     } catch (err) {
       this.createError.set(err instanceof Error ? err.message : String(err));
@@ -224,6 +226,14 @@ export class Datasets {
         return;
       }
       const pct = this.evalPercent();
+      const splits = datasetSplits(s.clips, pct);
+      const evalCount = [...splits.values()].filter((split) => split === 'eval').length;
+      if (evalCount === 0 || evalCount === s.clips.length) {
+        throw new Error('The dataset needs both training and evaluation sentences. Adjust the evaluation percentage and scan again.');
+      }
+      if (this.task() === 'tts' && s.speakers.length !== 1) {
+        throw new Error('The first voice test needs exactly one speaker. Select your speaker and scan again.');
+      }
       const lines = s.clips.map((c) =>
         JSON.stringify({
           id: c.id,
@@ -235,7 +245,7 @@ export class Datasets {
           sample_rate: c.sampleRate,
           category: c.category,
           sentence_id: c.sentenceId,
-          split: isEval(c.id, pct) ? 'eval' : 'train',
+          split: splits.get(c.id),
         }),
       );
       const manifestPath = `datasets/${name}/manifest.jsonl`;
@@ -247,8 +257,8 @@ export class Datasets {
         name,
         task: this.task(),
         clipCount: s.clips.length,
-        trainCount: s.clips.length - s.evalCount,
-        evalCount: s.evalCount,
+        trainCount: s.clips.length - evalCount,
+        evalCount,
         durationSec: Math.round(s.durationSec * 100) / 100,
         speakers: s.speakers,
         manifestPath,
@@ -311,8 +321,15 @@ export class Datasets {
 
   protected async downloadManifest(d: Dataset) {
     try {
-      const url = await getDownloadURL(ref(storage, d.manifestPath));
-      window.open(url, '_blank', 'noopener');
+      const blob = await getBlob(ref(storage, d.manifestPath));
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${d.name}-manifest.jsonl`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (err) {
       this.toast.error('Couldn’t open the manifest', err);
     }
@@ -323,14 +340,4 @@ export class Datasets {
     const s = this.speakers().find((x) => x.uid === id);
     return s?.speaker?.name || s?.displayName || id;
   }
-}
-
-/** Deterministic split: the same clip always lands in the same split. */
-function isEval(id: string, percent: number): boolean {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0) % 1000 < percent * 10;
 }

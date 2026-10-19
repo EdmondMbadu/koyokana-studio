@@ -20,6 +20,7 @@ export const baseEnvironment: AppEnvironment = {
     projectId: 'koyokana-studio',
     region: 'us-central1',
     artifactRepo: 'koyokana',
+    ttsImageDigest: 'sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb',
   },
   goalsHours: [10, 30],
 };

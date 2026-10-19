@@ -1,0 +1,100 @@
+{
+  "observed_on": "2026-10-19",
+  "project": "koyokana-studio",
+  "region": "us-central1",
+  "image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb",
+  "release_tag": "v1.0.1",
+  "successful_cloud_build": "bc3de251-1d7d-4e3e-803a-58d582c9845d",
+  "build_verification": {
+    "python_tests_passed": 9,
+    "optimizer_steps": 2,
+    "generator_weights_changed": true,
+    "held_out_evaluation_ran": true,
+    "checkpoint_saved": true,
+    "model_reloaded": true,
+    "wav_files_exported": 23
+  },
+  "studio_verification": {
+    "angular_tests_passed": 18,
+    "production_build_passed": true,
+    "hosting_deployed": true,
+    "served_index_and_configuration_bundles_match_build": true,
+    "url": "https://koyokana-studio.web.app",
+    "image_digest": "sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb",
+    "manifest_authenticated_download_verified": true,
+    "manifest_anonymous_access_denied": true,
+    "manifest_authorization_preflight_verified": true,
+    "manifest_bearer_token_created": false,
+    "verified_bundles": 3
+  },
+  "dataset": {
+    "name": "tts-v1",
+    "clips": 800,
+    "train_clips": 767,
+    "eval_clips": 33,
+    "raw_minutes_rounded": 52.9,
+    "eval_target_percent": 5,
+    "split_strategy": "sentence-group-v1",
+    "manifest_generation": "1792443774271937"
+  },
+  "l4_training_quota": {
+    "granted": 1,
+    "preference": "projects/303635763719/locations/global/quotaPreferences/koyokana-tts-l4"
+  },
+  "gpu_verification": {
+    "job": "projects/303635763719/locations/us-central1/customJobs/627713464629985280",
+    "state": "succeeded",
+    "max_optimizer_steps": 2,
+    "batch_size": 8,
+    "timeout_seconds": 1800,
+    "output": "gs://koyokana-studio.firebasestorage.app/runs/container-smoke-v1-20261019b/",
+    "gpu": "NVIDIA L4",
+    "prepared_clips": 800,
+    "prepared_train_clips": 767,
+    "prepared_eval_clips": 33,
+    "optimizer_steps": 2,
+    "prompts": 43,
+    "held_out_prompts": 33,
+    "unseen_phone_prompts": 10,
+    "wav_files": 119,
+    "checkpoint_files": 7,
+    "finite_training_and_eval_metrics": true,
+    "trainer_identity_gcs_read_create_verified": true
+  },
+  "full_experiment": {
+    "name": "tts-v1-r1",
+    "registry_id": "157b3de4f137cb77eeb1",
+    "state": "planned",
+    "launched": false,
+    "epochs": 100,
+    "batch_size": 8,
+    "timeout_seconds": 14400
+  },
+  "data_preflight": {
+    "job": "projects/303635763719/locations/us-central1/customJobs/2541743306262446080",
+    "state": "cancelled",
+    "reason": "Superseded after the same image checksum incompatibility was identified."
+  },
+  "previous_gpu_verification_attempts": [
+    {
+      "job": "projects/303635763719/locations/us-central1/customJobs/8751644242452938752",
+      "state": "failed_before_training",
+      "max_optimizer_steps": 2,
+      "batch_size": 8,
+      "timeout_seconds": 1800,
+      "output": "gs://koyokana-studio.firebasestorage.app/runs/container-smoke-v1-20261019/",
+      "cuda_check_passed": true,
+      "error": "Pinned storage SDK does not support checksum=auto; fixed to explicit crc32c and covered by real SDK multipart regression test."
+    }
+  ],
+  "live_storage_sdk_check": {
+    "sdk": "google-cloud-storage==2.18.2",
+    "identity": "existing authenticated project owner",
+    "crc32c_roundtrip_passed": true,
+    "manifest_clips_validated": 800,
+    "overwrite_rejected": true
+  },
+  "all_verification_jobs_terminal": true,
+  "deprecated_v1_tag_removed": true,
+  "completed_at_utc": "2026-10-19T22:09:35.298470+00:00"
+}

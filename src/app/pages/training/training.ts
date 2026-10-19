@@ -19,6 +19,7 @@ import { audioAmount, hours, relativeTime } from '../../core/format';
 import { Dataset, DatasetTask, RunStatus, TrainingRun } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../ui/icon';
+import { trainingCommand, trainingImage } from '../../core/training-command';
 
 interface Machine {
   id: string;
@@ -37,8 +38,7 @@ export const MACHINES: Machine[] = [
 
 const BASE_MODELS: Record<DatasetTask, { id: string; label: string }[]> = {
   tts: [
-    { id: 'facebook/mms-tts-lin', label: 'MMS-TTS Lingala (VITS)' },
-    { id: 'SWivid/F5-TTS', label: 'F5-TTS (v2 experiments)' },
+    { id: 'UBC-NLP/Simba-TTS-lin', label: 'Simba Lingala (MMS / VITS)' },
   ],
   stt: [
     { id: 'facebook/mms-1b-all', label: 'MMS-1B all (Lingala adapter)' },
@@ -47,7 +47,7 @@ const BASE_MODELS: Record<DatasetTask, { id: string; label: string }[]> = {
 };
 
 const DEFAULTS: Record<DatasetTask, TrainingRun['hyperparams']> = {
-  tts: { epochs: 100, learningRate: 2e-5, batchSize: 16 },
+  tts: { epochs: 100, learningRate: 2e-5, batchSize: 8 },
   stt: { epochs: 20, learningRate: 1e-3, batchSize: 16 },
 };
 
@@ -84,7 +84,7 @@ export class Training {
   protected readonly runName = signal('');
   protected readonly epochs = signal(100);
   protected readonly learningRate = signal(2e-5);
-  protected readonly batchSize = signal(16);
+  protected readonly batchSize = signal(8);
   protected readonly gitCommit = signal('');
   protected readonly runNotes = signal('');
   protected readonly creating = signal(false);
@@ -160,6 +160,16 @@ export class Training {
   protected async create() {
     const d = this.dataset();
     if (!d || !this.runName().trim() || this.creating()) return;
+    if (d.task === 'tts' && (d.speakers.length !== 1 || !d.trainCount || !d.evalCount)) {
+      this.toast.error('TTS needs a frozen dataset with one speaker and nonempty train/eval splits');
+      return;
+    }
+    if (!Number.isInteger(this.epochs()) || this.epochs() < 1 || this.epochs() > 500 ||
+        !Number.isInteger(this.batchSize()) || this.batchSize() < 1 || this.batchSize() > 32 ||
+        !Number.isFinite(this.learningRate()) || this.learningRate() <= 0 || this.learningRate() > 0.001) {
+      this.toast.error('Use 1–500 epochs, a batch size of 1–32, and a learning rate greater than zero and at most 0.001');
+      return;
+    }
     this.creating.set(true);
     try {
       const machine = MACHINES.find((m) => m.id === this.machineId())!;
@@ -171,6 +181,7 @@ export class Training {
         datasetName: d.name,
         manifestUri: d.manifestUri,
         baseModel: this.baseModel(),
+        trainerImage: trainingImage(d.task, environment.gcp),
         machine: machine.id,
         hyperparams: {
           epochs: Number(this.epochs()) || 1,
@@ -267,26 +278,7 @@ export class Training {
 
   protected command(r: TrainingRun): string {
     const m = MACHINES.find((x) => x.id === r.machine) ?? MACHINES[0]!;
-    const { projectId, region, artifactRepo } = environment.gcp;
-    const image = `${region}-docker.pkg.dev/${projectId}/${artifactRepo}/${r.task}-train:latest`;
-    const args = [
-      `--manifest=${r.manifestUri}`,
-      `--base-model=${r.baseModel}`,
-      `--epochs=${r.hyperparams.epochs}`,
-      `--learning-rate=${r.hyperparams.learningRate}`,
-      `--batch-size=${r.hyperparams.batchSize}`,
-      `--output=${r.outputUri}`,
-      `--run-id=${r.id}`,
-    ].join(',');
-    return [
-      'gcloud ai custom-jobs create \\',
-      `  --project=${projectId} \\`,
-      `  --region=${region} \\`,
-      `  --display-name=${r.name} \\`,
-      `  --labels=koyokana-run=${r.id.toLowerCase()},dataset=${r.datasetName.replace(/[^a-z0-9_-]/g, '-')} \\`,
-      `  --worker-pool-spec=machine-type=${m.machineType},accelerator-type=${m.accelerator},accelerator-count=${m.count},replica-count=1,container-image-uri=${image} \\`,
-      `  --args=${args}`,
-    ].join('\n');
+    return trainingCommand(r, environment.gcp, m);
   }
 
   protected statusOf(s: RunStatus) {
