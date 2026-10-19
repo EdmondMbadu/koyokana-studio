@@ -68,6 +68,14 @@ export class Recorder {
     const id = this.trackSettings()?.deviceId;
     return this.devices().find((d) => d.deviceId === id)?.label || 'Default microphone';
   });
+  /** The best external (USB / interface) microphone plugged in, if any. */
+  readonly externalMic = computed(() => pickExternalMic(this.devices()));
+  /** True when recording through the laptop's own mic while a better one is plugged in. */
+  readonly usingBuiltIn = computed(() => {
+    const ext = this.externalMic();
+    if (!ext || this.state() !== 'ready') return false;
+    return this.trackSettings()?.deviceId !== ext.deviceId && isBuiltIn(this.deviceLabel());
+  });
 
   private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
@@ -141,6 +149,13 @@ export class Recorder {
     const actualId = track.getSettings().deviceId ?? '';
     if (deviceId && actualId === deviceId) this.storeMic(deviceId);
     await this.refreshDevices();
+    // First run (no saved choice): switch to a plugged-in USB mic instead of the laptop's.
+    const ext = this.externalMic();
+    if (!this.deviceId() && ext && ext.deviceId !== actualId && isBuiltIn(this.deviceLabel())) {
+      this.storeMic(ext.deviceId);
+      await this.open(ext.deviceId);
+      return;
+    }
     navigator.mediaDevices.removeEventListener('devicechange', this.onDeviceChange);
     navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChange);
     this.state.set('ready');
@@ -326,6 +341,20 @@ export class Recorder {
       /* storage unavailable */
     }
   }
+}
+
+const NOT_A_MIC = /iphone|continuity|1080p|webcam|camera|stream|airpods|virtual|blackhole|zoom|teams|loopback|aggregate/i;
+const MIC_BRANDS = /r[øo]de|nt-usb|shure|audio-technica|at20|blue|yeti|focusrite|scarlett|samson|elgato|hyperx|usb|interface|audient|motu|zoom h/i;
+
+export function isBuiltIn(label: string): boolean {
+  return /built-in|macbook|default/i.test(label);
+}
+
+export function pickExternalMic(devices: MediaDeviceInfo[]): MediaDeviceInfo | null {
+  const candidates = devices.filter(
+    (d) => d.deviceId !== 'default' && d.label && !isBuiltIn(d.label) && !NOT_A_MIC.test(d.label),
+  );
+  return candidates.find((d) => MIC_BRANDS.test(d.label)) ?? candidates[0] ?? null;
 }
 
 function readStoredMic(): string {

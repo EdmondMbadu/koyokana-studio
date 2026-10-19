@@ -443,3 +443,85 @@
 .left-count {
   font-size: 12.5px;
 }
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+.banner span {
+  flex: 1;
+}
+
+.banner.warn {
+  border-color: #f0d6a8;
+  background: var(--amber-bg);
+  color: #7a4100;
+}
+
+.flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-3);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.flow .n {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.flow li.on {
+  border-color: var(--text);
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+}
+
+.flow li.on .n {
+  background: var(--text);
+  color: #fff;
+}
+
+.flow li.done .n {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.block-msg {
+  color: #b4232a;
+}
+
+@media (max-width: 720px) {
+  .flow {
+    grid-template-columns: 1fr;
+  }
+}

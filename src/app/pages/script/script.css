@@ -107,3 +107,47 @@ tr:hover .actions {
     width: 100%;
   }
 }
+
+.rules {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.rules summary {
+  cursor: pointer;
+  font-weight: 550;
+  color: var(--text);
+}
+
+.rules ul {
+  margin: 8px 0 2px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.switch.small {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.issue-group {
+  margin-top: 8px;
+}
+
+.issue-fix {
+  margin-left: 6px;
+}
+
+.issue-group ul {
+  margin: 4px 0 0;
+}
+
+.issue-group .badge.tiny {
+  margin-left: 0;
+}

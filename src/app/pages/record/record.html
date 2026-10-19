@@ -26,6 +26,37 @@
       </div>
     </header>
 
+    @if (recorder.usingBuiltIn()) {
+      <div class="banner warn">
+        <app-icon name="mic" [size]="16" />
+        <span>You’re recording with the <b>laptop microphone</b>. Use <b>{{ recorder.externalMic()?.label }}</b> for clean training data.</span>
+        <button class="btn btn-primary btn-sm" (click)="selectMic(recorder.externalMic()!.deviceId)">Switch mic</button>
+      </div>
+    } @else if (!soundChecked() && current() && micReady()) {
+      <div class="banner">
+        <app-icon name="volume" [size]="16" />
+        <span>Before your first take, run a 15-second <b>sound check</b> on the room and your level.</span>
+        <button class="btn btn-secondary btn-sm" (click)="openMicCheck()">Sound check</button>
+      </div>
+    }
+
+    @if (current()) {
+      <ol class="flow" aria-label="How to record">
+        <li [class.on]="phase() === 'idle'" [class.done]="phase() !== 'idle'">
+          <span class="n">1</span>
+          <span><span class="kbd">Space</span> and read aloud</span>
+        </li>
+        <li [class.on]="phase() === 'recording'" [class.done]="phase() === 'review'">
+          <span class="n">2</span>
+          <span><span class="kbd">Space</span> when you finish</span>
+        </li>
+        <li [class.on]="phase() === 'review'">
+          <span class="n">3</span>
+          <span>Listen · <span class="kbd">Enter</span> keep · <span class="kbd">R</span> redo</span>
+        </li>
+      </ol>
+    }
+
     <!-- Prompt -->
     <div class="card prompt" [class.is-recording]="phase() === 'recording'">
       @if (loadingQueue() && !current()) {
@@ -50,9 +81,9 @@
           @if (takeNumber() > 1) {
             <span class="badge badge-outline">Take {{ takeNumber() }}</span>
           }
-          @if (s.hasDigits) {
-            <span class="badge badge-amber" title="Contains digits — read numbers as words">
-              <app-icon name="alert" [size]="12" /> Digits
+          @if (s.issues?.length || s.hasDigits) {
+            <span class="badge badge-amber" title="This sentence breaks a spelling rule — read it as written, or skip it and fix it on the Script page">
+              <app-icon name="alert" [size]="12" /> Check spelling
             </span>
           }
           <span class="spacer"></span>
@@ -71,11 +102,22 @@
             <h3>You’ve reached the end</h3>
             <p>{{ skipped().length }} skipped sentence{{ skipped().length === 1 ? '' : 's' }} still need a recording.</p>
             <button class="btn btn-primary btn-sm" (click)="restoreSkipped()">Record skipped sentences</button>
-          } @else {
-            <h3>No sentences left to record</h3>
+          } @else if (noScript()) {
+            <h3>The script is empty</h3>
             @if (auth.isAdmin()) {
-              <p>Import more sentences to keep going.</p>
-              <a class="btn btn-primary btn-sm" routerLink="/script"><app-icon name="plus" [size]="14" /> Add sentences</a>
+              <p>Load the starter script — 1,004 Lingala sentences, about an hour of reading — then come back here.</p>
+              <a class="btn btn-primary btn-sm" routerLink="/script" [queryParams]="{ starter: 1 }"><app-icon name="file" [size]="14" /> Load starter script</a>
+            } @else {
+              <p>Ask an admin to load the script.</p>
+            }
+          } @else {
+            <h3>Every sentence is recorded</h3>
+            @if (auth.isAdmin()) {
+              <p>Review your takes, or add more sentences to keep going.</p>
+              <div class="row" style="justify-content: center">
+                <a class="btn btn-secondary btn-sm" routerLink="/review">Review takes</a>
+                <a class="btn btn-primary btn-sm" routerLink="/script"><app-icon name="plus" [size]="14" /> Add sentences</a>
+              </div>
             } @else {
               <p>Ask an admin to add more sentences to the script.</p>
             }
@@ -132,7 +174,9 @@
             @default {
               <div class="idle">
                 <app-live-bars class="live faint" [level]="recorder.level()" [active]="true" color="#c9c9c9" />
-                <p class="idle-hint">Press <span class="kbd">Space</span> to start recording</p>
+                @if (current()) {
+                  <p class="idle-hint">Press <span class="kbd">Space</span> or the red button, then read the sentence above</p>
+                }
               </div>
             }
           }
@@ -171,13 +215,12 @@
       </button>
     </div>
     <p class="transport-hint">
-      @switch (phase()) {
-        @case ('recording') { <span class="kbd">Space</span> stop · <span class="kbd">Esc</span> cancel }
-        @case ('review') {
-          @if (blocking()) { No speech detected — retake this sentence. }
-          @else { <span class="kbd">Enter</span> accept · <span class="kbd">P</span> play · <span class="kbd">Space</span> record again }
-        }
-        @default { <span class="kbd">Space</span> record · <span class="kbd">S</span> skip }
+      @if (phase() === 'review' && blocking()) {
+        <span class="block-msg">No speech detected — press <span class="kbd">R</span> and record this sentence again.</span>
+      } @else if (phase() === 'recording') {
+        <span class="kbd">Esc</span> cancels this take
+      } @else if (current()) {
+        <span class="kbd">S</span> skips a sentence that reads wrong — fix it later on the Script page
       }
     </p>
   </section>
@@ -195,6 +238,10 @@
         }
       </select>
       <app-level-meter [level]="micReady() ? recorder.level() : -120" />
+      <button class="btn btn-secondary btn-sm" (click)="openMicCheck()" [disabled]="!micReady() || recorder.recording()">
+        <app-icon name="volume" [size]="14" /> Sound check
+        @if (soundChecked()) { <app-icon name="check" [size]="13" /> }
+      </button>
       <div class="spec">
         <span>{{ recorder.sampleRate() ? recorder.sampleRate() / 1000 + ' kHz' : '—' }}</span>
         <span>24-bit</span>
@@ -264,3 +311,7 @@
     </div>
   </aside>
 </div>
+
+@if (micCheckOpen()) {
+  <app-mic-check (closed)="closeMicCheck()" />
+}

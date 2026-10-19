@@ -2,7 +2,7 @@
   <header class="page-header">
     <div>
       <h1 class="page-title">Script</h1>
-      <p class="page-sub">The sentences speakers read aloud. Write numbers as words — digits are flagged.</p>
+      <p class="page-sub">The sentences speakers read aloud. Sentences that break a spelling rule are flagged.</p>
     </div>
     <div class="row">
       <button class="btn btn-secondary" (click)="exportCsv()" [disabled]="exporting()">
@@ -73,8 +73,11 @@
       <div class="empty">
         <div class="empty-icon"><app-icon name="file" [size]="20" /></div>
         <h3>No sentences yet</h3>
-        <p>Import a text file with one sentence per line, or a CSV with <span class="mono">text</span> and <span class="mono">category</span> columns.</p>
-        <button class="btn btn-primary btn-sm" (click)="openImport()"><app-icon name="plus" [size]="14" /> Import sentences</button>
+        <p>Start with the starter script — 1,004 Lingala sentences written to the spelling rules — or import your own file.</p>
+        <div class="row" style="justify-content: center">
+          <button class="btn btn-secondary btn-sm" (click)="openImport()"><app-icon name="upload" [size]="14" /> Import a file</button>
+          <button class="btn btn-primary btn-sm" (click)="openImport(); loadStarter()"><app-icon name="file" [size]="14" /> Load starter script</button>
+        </div>
       </div>
     } @else {
       <div class="table-wrap">
@@ -95,8 +98,8 @@
                 <td class="mono muted">{{ $index + 1 }}</td>
                 <td class="sentence" lang="ln">
                   {{ s.text }}
-                  @if (s.hasDigits) {
-                    <span class="badge badge-amber tiny" title="Write numbers as words">Digits</span>
+                  @for (i of issuesOf(s); track i) {
+                    <span class="badge badge-amber tiny" [title]="ISSUES[i].fix">{{ ISSUES[i].label }}</span>
                   }
                 </td>
                 <td><span class="badge">{{ s.category }}</span></td>
@@ -148,6 +151,10 @@
             <app-icon name="upload" [size]="14" /> Choose file
             <input type="file" accept=".txt,.csv,.tsv,text/plain,text/csv" (change)="onFile($event)" hidden />
           </label>
+          <button class="btn btn-ghost btn-sm" (click)="loadStarter()" [disabled]="loadingStarter()">
+            @if (loadingStarter()) { <span class="spinner"></span> } @else { <app-icon name="file" [size]="14" /> }
+            Starter script
+          </button>
           @if (importFileName()) {
             <span class="hint mono">{{ importFileName() }}</span>
           }
@@ -165,29 +172,59 @@
           placeholder="Mbote! Ozali malamu?&#10;Nazali awa mpo na kosalisa yo.&#10;Niongo na yo ezali mille cinq cents francs."
           [ngModel]="importText()" (ngModelChange)="importText.set($event)"></textarea>
 
+        <details class="rules">
+          <summary>Spelling rules</summary>
+          <ul>
+            <li>Plain <b>e</b> and <b>o</b> — never ɛ or ɔ — and no tone marks.</li>
+            <li>No digits or symbols: <i>mille cinq cents francs</i>, <i>dix pour cent</i>.</li>
+            <li>French words keep French spelling and accents: <i>crédit, compte, s’il vous plaît</i>.</li>
+            <li>No abbreviations: <i>Madame</i>, not <i>Mme</i>; <i>francs</i>, not <i>FC</i>.</li>
+            <li>Verb pieces joined (<i>kokende, nazali</i>); <i>na, ya, te</i> stand alone.</li>
+          </ul>
+        </details>
+
+        <div class="row wrap" style="gap: 20px">
+          <label class="switch small">
+            <input type="checkbox" [checked]="autoFixOn()" (change)="autoFixOn.set($any($event.target).checked)" />
+            <span class="track"></span> Auto-fix ɛ/ɔ and tone marks
+          </label>
+          <label class="switch small">
+            <input type="checkbox" [checked]="skipFlagged()" (change)="skipFlagged.set($any($event.target).checked)" />
+            <span class="track"></span> Skip sentences that break a rule
+          </label>
+        </div>
+
         @if (parsed(); as p) {
-          @if (p.lines.length) {
+          @if (p.lines.length || p.alreadyIn) {
             <div class="summary">
-              <div><b>{{ p.lines.length.toLocaleString() }}</b> sentences</div>
+              <div><b>{{ toImport().length.toLocaleString() }}</b> to import</div>
               <div>≈ <b>{{ p.readTime }}</b> to read</div>
               <div><b>{{ p.categories.length }}</b> categor{{ p.categories.length === 1 ? 'y' : 'ies' }}</div>
+              @if (p.checkingExisting) { <div class="muted"><span class="spinner" style="width: 11px; height: 11px"></span> checking the script…</div> }
+              @if (p.alreadyIn) { <div class="muted">{{ p.alreadyIn.toLocaleString() }} already in the script, skipped</div> }
               @if (p.duplicates) { <div class="muted">{{ p.duplicates }} duplicates removed</div> }
               @if (p.tooShort) { <div class="muted">{{ p.tooShort }} too short, skipped</div> }
+              @if (p.fixedCount) { <div class="muted">{{ p.fixedCount }} auto-fixed</div> }
             </div>
-            @if (p.digits.length) {
+            @if (p.byIssue.length) {
               <div class="warn">
                 <app-icon name="alert" [size]="15" />
                 <div>
-                  <b>{{ p.digits.length }} sentence{{ p.digits.length === 1 ? ' contains' : 's contain' }} digits.</b>
-                  Speakers will read them, but the text must say exactly what is spoken — consider writing numbers out as words.
-                  <ul>
-                    @for (d of p.digits.slice(0, 3); track $index) { <li class="truncate">{{ d.text }}</li> }
-                  </ul>
+                  <b>{{ p.flagged }} sentence{{ p.flagged === 1 ? ' breaks' : 's break' }} a spelling rule.</b>
+                  {{ skipFlagged() ? 'They will be skipped.' : 'They import with a warning badge — fix them on the Script page.' }}
+                  @for (g of p.byIssue; track g.issue) {
+                    <div class="issue-group">
+                      <span class="badge badge-amber tiny">{{ ISSUES[g.issue].label }} · {{ g.lines.length }}</span>
+                      <span class="issue-fix">{{ ISSUES[g.issue].fix }}</span>
+                      <ul>
+                        @for (d of g.lines.slice(0, 2); track $index) { <li class="truncate">{{ d.text }}</li> }
+                      </ul>
+                    </div>
+                  }
                 </div>
               </div>
-            }
-            @if (p.long) {
-              <p class="hint">{{ p.long }} sentence{{ p.long === 1 ? ' is' : 's are' }} over 250 characters — long takes are harder to record cleanly.</p>
+            } @else if (p.lines.length) {
+              <p class="form-success"><app-icon name="check" [size]="14" /> Every sentence follows the spelling rules.</p>
             }
           } @else {
             <p class="hint">
@@ -202,8 +239,8 @@
       </div>
       <div class="dialog-footer">
         <button class="btn btn-secondary" (click)="closeImport()" [disabled]="importing()">Cancel</button>
-        <button class="btn btn-primary" (click)="runImport()" [disabled]="importing() || !parsed().lines.length">
-          @if (importing()) { <span class="spinner"></span> Importing… } @else { Import {{ parsed().lines.length ? parsed().lines.length.toLocaleString() : '' }} }
+        <button class="btn btn-primary" (click)="runImport()" [disabled]="importing() || !toImport().length || parsed().checkingExisting">
+          @if (importing()) { <span class="spinner"></span> Importing… } @else { Import {{ toImport().length ? toImport().length.toLocaleString() : '' }} }
         </button>
       </div>
     </div>
@@ -226,6 +263,9 @@
         <div class="field">
           <label for="ed-text">Text</label>
           <textarea id="ed-text" class="textarea" rows="4" [ngModel]="editText()" (ngModelChange)="editText.set($event)"></textarea>
+          @for (i of editIssues(); track i) {
+            <span class="hint" style="color: var(--amber)"><b>{{ ISSUES[i].label }}:</b> {{ ISSUES[i].fix }}</span>
+          }
         </div>
         <div class="field">
           <label for="ed-cat">Category</label>

@@ -36,13 +36,15 @@ import { Icon } from '../../ui/icon';
 import { LevelMeter } from '../../ui/level-meter';
 import { LiveBars } from '../../ui/live-bars';
 import { Waveform } from '../../ui/waveform';
+import { MicCheck } from './mic-check';
 
 const PAGE = 25;
 const AUTOPLAY_KEY = 'ks.autoplay';
+const SOUNDCHECK_KEY = 'ks.soundchecked';
 
 @Component({
   selector: 'app-record',
-  imports: [FormsModule, RouterLink, Icon, LevelMeter, LiveBars, Waveform],
+  imports: [FormsModule, RouterLink, Icon, LevelMeter, LiveBars, Waveform, MicCheck],
   templateUrl: './record.html',
   styleUrl: './record.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -82,6 +84,9 @@ export class Record {
   protected readonly now = signal(Date.now());
 
   protected readonly current = computed(() => this.queue()[0] ?? null);
+  protected readonly noScript = computed(() => this.stats.loaded() && this.stats.totalSentences() === 0);
+  protected readonly micCheckOpen = signal(false);
+  protected readonly soundChecked = signal(readFlag(SOUNDCHECK_KEY, false));
   protected readonly upcoming = computed(() => this.queue()[1] ?? null);
   protected readonly phase = computed<'idle' | 'recording' | 'review'>(() =>
     this.recorder.recording() ? 'recording' : this.take() ? 'review' : 'idle',
@@ -207,6 +212,18 @@ export class Record {
   protected selectMic(id: string) {
     if (this.recorder.recording()) return;
     this.recorder.selectDevice(id);
+  }
+
+  protected openMicCheck() {
+    if (this.recorder.recording()) return;
+    this.discardTake();
+    this.micCheckOpen.set(true);
+  }
+
+  protected closeMicCheck() {
+    this.micCheckOpen.set(false);
+    this.soundChecked.set(true);
+    writeFlag(SOUNDCHECK_KEY, true);
   }
 
   protected toggleAutoplay(v: boolean) {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   QueryConstraint,
@@ -24,6 +24,7 @@ import { ConfirmService } from '../../core/confirm.service';
 import { downloadText, parseDelimited, toCsv } from '../../core/csv';
 import { db } from '../../core/firebase';
 import { formatDuration, normalizeText } from '../../core/format';
+import { SPELLING_ISSUES, SpellingIssue, autoFix, checkSpelling } from '../../core/spelling';
 import { ScriptMeta, Sentence, SentenceStatus } from '../../core/models';
 import { StatsService } from '../../core/stats.service';
 import { ToastService } from '../../core/toast.service';
@@ -31,13 +32,15 @@ import { Icon } from '../../ui/icon';
 
 const PAGE = 50;
 const BATCH = 400;
-const SECONDS_PER_SENTENCE = 6;
+const SECONDS_PER_SENTENCE = 4;
+/** Rough reading time: ~13 characters a second plus a breath. */
+const readSeconds = (text: string) => text.length / 13 + 0.8;
 
 interface ParsedLine {
   text: string;
   category: string;
-  hasDigits: boolean;
-  long: boolean;
+  issues: SpellingIssue[];
+  fixed: boolean;
 }
 
 @Component({
@@ -47,7 +50,10 @@ interface ParsedLine {
   styleUrl: './script.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Script {
+export class Script implements OnInit {
+  /** ?starter=1 opens the importer with the bundled starter script. */
+  readonly starter = input<string | undefined>();
+
   protected readonly stats = inject(StatsService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -84,7 +90,17 @@ export class Script {
   protected readonly importFileName = signal('');
   protected readonly importing = signal(false);
   protected readonly importProgress = signal(0);
-  protected readonly parsed = computed(() => this.parse(this.importText(), this.importCategory()));
+  protected readonly autoFixOn = signal(true);
+  protected readonly skipFlagged = signal(false);
+  protected readonly existingTexts = signal<Set<string> | null>(null);
+  protected readonly parsed = computed(() =>
+    this.parse(this.importText(), this.importCategory(), this.autoFixOn(), this.existingTexts()),
+  );
+  protected readonly toImport = computed(() =>
+    this.skipFlagged() ? this.parsed().lines.filter((l) => !l.issues.length) : this.parsed().lines,
+  );
+  protected readonly ISSUES = SPELLING_ISSUES;
+  protected readonly editIssues = computed(() => checkSpelling(normalizeText(this.editText())));
 
   // edit
   protected readonly editing = signal<Sentence | null>(null);
@@ -97,6 +113,30 @@ export class Script {
     this.stats.refresh(0);
     this.loadCategories();
     this.reload();
+  }
+
+  ngOnInit() {
+    if (this.starter()) {
+      this.openImport();
+      this.loadStarter();
+    }
+  }
+
+  protected readonly loadingStarter = signal(false);
+
+  /** Loads the bundled v1 script (public/script/koyokana-script-v1.csv) into the importer. */
+  protected async loadStarter() {
+    this.loadingStarter.set(true);
+    try {
+      const res = await fetch('script/koyokana-script-v1.csv', { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this.importText.set(await res.text());
+      this.importFileName.set('koyokana-script-v1.csv · starter script');
+    } catch (err) {
+      this.toast.error('Couldn’t load the starter script', err);
+    } finally {
+      this.loadingStarter.set(false);
+    }
   }
 
   // ───────────────────────────── list
@@ -164,6 +204,20 @@ export class Script {
     this.importFileName.set('');
     this.importProgress.set(0);
     this.importOpen.set(true);
+    this.loadExisting();
+  }
+
+  /** Loads every sentence already in the script so re-imports never duplicate. */
+  private async loadExisting() {
+    this.existingTexts.set(null);
+    try {
+      const snap = await getDocs(collection(db, 'sentences'));
+      const set = new Set<string>();
+      snap.forEach((d) => set.add(String((d.data() as Sentence).text ?? '').toLowerCase()));
+      this.existingTexts.set(set);
+    } catch {
+      this.existingTexts.set(new Set());
+    }
   }
 
   protected closeImport() {
@@ -184,10 +238,10 @@ export class Script {
     this.importText.set(await file.text());
   }
 
-  private parse(raw: string, defaultCategory: string) {
+  private parse(raw: string, defaultCategory: string, fix: boolean, existing: Set<string> | null) {
     const cat = normalizeCategory(defaultCategory) || 'general';
     let lines: { text: string; category: string }[] = [];
-    const firstLine = raw.split(/\r?\n/, 1)[0]?.toLowerCase() ?? '';
+    const firstLine = raw.replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0]?.toLowerCase() ?? '';
     const isTable = /(^|[,\t])"?text"?([,\t]|$)/.test(firstLine);
 
     if (isTable) {
@@ -206,10 +260,13 @@ export class Script {
     const seen = new Set<string>();
     let duplicates = 0;
     let tooShort = 0;
+    let alreadyIn = 0;
+    let fixedCount = 0;
     const out: ParsedLine[] = [];
     for (const l of lines) {
-      const text = normalizeText(l.text);
-      if (!text) continue;
+      const original = normalizeText(l.text);
+      if (!original) continue;
+      const text = fix ? autoFix(original) : original;
       if (text.replace(/[^\p{L}]/gu, '').length < 2) {
         tooShort++;
         continue;
@@ -220,30 +277,44 @@ export class Script {
         continue;
       }
       seen.add(key);
-      out.push({ text, category: l.category || cat, hasDigits: /\d/.test(text), long: text.length > 250 });
+      if (existing?.has(key)) {
+        alreadyIn++;
+        continue;
+      }
+      const wasFixed = text !== original;
+      if (wasFixed) fixedCount++;
+      out.push({ text, category: l.category || cat, issues: checkSpelling(text), fixed: wasFixed });
     }
+
+    const byIssue = (Object.keys(SPELLING_ISSUES) as SpellingIssue[])
+      .map((issue) => ({ issue, lines: out.filter((l) => l.issues.includes(issue)) }))
+      .filter((g) => g.lines.length);
     return {
       lines: out,
       duplicates,
       tooShort,
-      digits: out.filter((l) => l.hasDigits),
-      long: out.filter((l) => l.long).length,
+      alreadyIn,
+      fixedCount,
+      flagged: out.filter((l) => l.issues.length).length,
+      byIssue,
       categories: [...new Set(out.map((l) => l.category))],
-      readTime: formatDuration(out.length * SECONDS_PER_SENTENCE),
+      readTime: formatDuration(out.reduce((a, l) => a + readSeconds(l.text), 0)),
+      checkingExisting: existing === null,
     };
   }
 
   protected async runImport() {
-    const p = this.parsed();
-    if (!p.lines.length || this.importing()) return;
+    const lines = this.toImport();
+    if (!lines.length || this.importing() || this.parsed().checkingExisting) return;
     this.importing.set(true);
     this.importProgress.set(0);
     const uid = this.auth.user()!.uid;
     const base = Date.now() * 1000;
+    const categories = [...new Set(lines.map((l) => l.category))];
     try {
-      for (let i = 0; i < p.lines.length; i += BATCH) {
+      for (let i = 0; i < lines.length; i += BATCH) {
         const batch = writeBatch(db);
-        p.lines.slice(i, i + BATCH).forEach((l, j) => {
+        lines.slice(i, i + BATCH).forEach((l, j) => {
           const ref = doc(collection(db, 'sentences'));
           batch.set(ref, {
             text: l.text,
@@ -251,16 +322,17 @@ export class Script {
             seq: base + i + j,
             status: 'open',
             recordCount: 0,
-            hasDigits: l.hasDigits,
+            hasDigits: l.issues.includes('digits'),
+            issues: l.issues,
             createdAt: serverTimestamp(),
             createdBy: uid,
           });
         });
         await batch.commit();
-        this.importProgress.set(Math.min(1, (i + BATCH) / p.lines.length));
+        this.importProgress.set(Math.min(1, (i + BATCH) / lines.length));
       }
-      await setDoc(doc(db, 'meta', 'script'), { categories: arrayUnion(...p.categories) }, { merge: true });
-      this.toast.success(`Imported ${p.lines.length.toLocaleString()} sentences`);
+      await setDoc(doc(db, 'meta', 'script'), { categories: arrayUnion(...categories) }, { merge: true });
+      this.toast.success(`Imported ${lines.length.toLocaleString()} sentences`);
       this.importing.set(false);
       this.importOpen.set(false);
       await this.loadCategories();
@@ -268,7 +340,7 @@ export class Script {
       this.reload();
     } catch (err) {
       this.importing.set(false);
-      this.toast.error('Import stopped partway', err);
+      this.toast.error('Import stopped partway — run it again; sentences already saved are skipped', err);
       this.stats.refresh(0);
       this.reload();
     }
@@ -289,13 +361,14 @@ export class Script {
     if (!s || !text) return;
     this.savingEdit.set(true);
     try {
-      await updateDoc(doc(db, 'sentences', s.id), { text, category, hasDigits: /\d/.test(text) });
+      const issues = checkSpelling(text);
+      await updateDoc(doc(db, 'sentences', s.id), { text, category, hasDigits: issues.includes('digits'), issues });
       if (!this.categories().includes(category)) {
         await setDoc(doc(db, 'meta', 'script'), { categories: arrayUnion(category) }, { merge: true });
         this.loadCategories();
       }
       this.rows.update((r) =>
-        r.map((x) => (x.id === s.id ? { ...x, text, category, hasDigits: /\d/.test(text) } : x)),
+        r.map((x) => (x.id === s.id ? { ...x, text, category, hasDigits: issues.includes('digits'), issues } : x)),
       );
       this.editing.set(null);
       this.toast.success('Sentence updated');
@@ -324,6 +397,10 @@ export class Script {
     } catch (err) {
       this.toast.error('Couldn’t delete', err);
     }
+  }
+
+  protected issuesOf(s: Sentence): SpellingIssue[] {
+    return s.issues ?? checkSpelling(s.text);
   }
 
   protected async exportCsv() {

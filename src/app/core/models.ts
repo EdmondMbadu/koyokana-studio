@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import { SpellingIssue } from './spelling';
 
 export type Role = 'admin' | 'reviewer' | 'recorder' | 'pending' | 'disabled';
 
@@ -42,6 +43,7 @@ export interface Sentence {
   status: SentenceStatus;
   recordCount: number;
   hasDigits: boolean;
+  issues?: SpellingIssue[];
   createdAt?: Timestamp;
   createdBy?: string;
   lastRecordedAt?: Timestamp;
