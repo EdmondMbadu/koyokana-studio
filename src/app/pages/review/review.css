@@ -283,3 +283,37 @@
     position: static;
   }
 }
+
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.choice.on {
+  border-color: var(--text);
+  background: var(--bg-subtle);
+}
+
+.choice input {
+  margin-top: 3px;
+  accent-color: var(--text);
+}
+
+.choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.choice-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

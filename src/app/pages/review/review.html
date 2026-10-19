@@ -16,6 +16,11 @@
         }
       </div>
       <span class="spacer"></span>
+      @if (stats.pendingClips() > 0) {
+        <button class="btn btn-secondary btn-sm" (click)="openBulk()">
+          <app-icon name="check" [size]="14" /> Approve in bulk
+        </button>
+      }
       <label class="switch small">
         <input type="checkbox" [checked]="flaggedOnly()" (change)="setFlagged($any($event.target).checked)" />
         <span class="track"></span> Flagged only
@@ -195,3 +200,50 @@
     }
   </aside>
 </div>
+
+@if (bulkOpen()) {
+  <div class="overlay" (click)="closeBulk()">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bulk-title" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title" id="bulk-title">Approve in bulk</div>
+          <p class="dialog-sub">For takes you already listened to while recording. Flagged takes are worth a listen first.</p>
+        </div>
+        <button class="icon-btn" (click)="closeBulk()" aria-label="Close"><app-icon name="x" /></button>
+      </div>
+      <div class="dialog-body stack">
+        @if (bulkCounts(); as c) {
+          <label class="choice" [class.on]="bulkScope() === 'clean'">
+            <input type="radio" name="scope" [checked]="bulkScope() === 'clean'" (change)="bulkScope.set('clean')" />
+            <span class="choice-body">
+              <span class="choice-title"><b>Clean takes only</b> <span class="badge badge-green tiny">Recommended</span></span>
+              <span class="hint">{{ c.clean.toLocaleString() }} pending clips with no quality flags. The {{ (c.pending - c.clean).toLocaleString() }} flagged ones stay in the queue for you to hear.</span>
+            </span>
+          </label>
+          <label class="choice" [class.on]="bulkScope() === 'all'">
+            <input type="radio" name="scope" [checked]="bulkScope() === 'all'" (change)="bulkScope.set('all')" />
+            <span class="choice-body">
+              <b>Everything pending</b>
+              <span class="hint">All {{ c.pending.toLocaleString() }} pending clips, flagged ones included.</span>
+            </span>
+          </label>
+          @if (speakerId()) {
+            <p class="hint">Only clips from the speaker selected in the filter.</p>
+          }
+          @if (bulkRunning()) {
+            <div class="progress"><span [style.width.%]="bulkTotal() ? (bulkDone() / bulkTotal()) * 100 : 0"></span></div>
+            <p class="hint tabular">{{ bulkDone().toLocaleString() }} / {{ bulkTotal().toLocaleString() }} approved…</p>
+          }
+        } @else {
+          <div class="row"><span class="spinner"></span> Counting pending clips…</div>
+        }
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="closeBulk()" [disabled]="bulkRunning()">Cancel</button>
+        <button class="btn btn-primary" (click)="runBulk()" [disabled]="bulkRunning() || !bulkTotal()">
+          @if (bulkRunning()) { <span class="spinner"></span> Approving… } @else { Approve {{ bulkTotal().toLocaleString() }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}

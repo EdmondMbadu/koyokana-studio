@@ -15,6 +15,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
+  getCountFromServer,
   getDocs,
   increment,
   limit,
@@ -87,6 +89,18 @@ export class Review {
   protected readonly QC_LABELS = QC_LABELS;
   protected readonly formatDuration = formatDuration;
   protected readonly relativeTime = relativeTime;
+
+  // bulk approve
+  protected readonly bulkOpen = signal(false);
+  protected readonly bulkScope = signal<'clean' | 'all'>('clean');
+  protected readonly bulkCounts = signal<{ pending: number; clean: number } | null>(null);
+  protected readonly bulkRunning = signal(false);
+  protected readonly bulkDone = signal(0);
+  protected readonly bulkTotal = computed(() => {
+    const c = this.bulkCounts();
+    if (!c) return 0;
+    return this.bulkScope() === 'clean' ? c.clean : c.pending;
+  });
 
   protected readonly tabs = computed(() => [
     { value: 'pending' as const, label: 'Pending', count: this.stats.pendingClips() },
@@ -337,6 +351,79 @@ export class Review {
       this.toast.error('Couldn’t update the transcript', err);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // ───────────────────────────── bulk approve
+
+  protected async openBulk() {
+    this.bulkScope.set('clean');
+    this.bulkCounts.set(null);
+    this.bulkDone.set(0);
+    this.bulkOpen.set(true);
+    try {
+      const pendingQ = this.bulkQuery('all');
+      const cleanQ = this.bulkQuery('clean');
+      const [pending, clean] = await Promise.all([getCountFromServer(pendingQ), getCountFromServer(cleanQ)]);
+      this.bulkCounts.set({ pending: pending.data().count, clean: clean.data().count });
+      if (clean.data().count === 0) this.bulkScope.set('all');
+    } catch (err) {
+      this.bulkOpen.set(false);
+      this.toast.error('Couldn’t count pending clips', err);
+    }
+  }
+
+  protected closeBulk() {
+    if (this.bulkRunning()) return;
+    this.bulkOpen.set(false);
+  }
+
+  private bulkQuery(scope: 'clean' | 'all') {
+    const c: QueryConstraint[] = [where('status', '==', 'pending')];
+    if (scope === 'clean') c.push(where('hasFlags', '==', false));
+    if (this.speakerId()) c.push(where('speakerId', '==', this.speakerId()));
+    return query(collection(db, 'clips'), ...c);
+  }
+
+  /** Approves every pending clip in scope, 400 per batch (Firestore allows 500). */
+  protected async runBulk() {
+    if (this.bulkRunning() || !this.bulkTotal()) return;
+    const scope = this.bulkScope();
+    this.bulkRunning.set(true);
+    this.bulkDone.set(0);
+    const uid = this.auth.user()!.uid;
+    const name = this.auth.displayName();
+    let approved = 0;
+    let seconds = 0;
+    try {
+      for (;;) {
+        // Approved clips leave the "pending" result set, so always read the first page again.
+        const snap = await getDocs(query(this.bulkQuery(scope), orderBy(documentId()), limit(400)));
+        if (snap.empty) break;
+        const batch = writeBatch(db);
+        snap.docs.forEach((d) => {
+          batch.update(d.ref, {
+            status: 'approved',
+            reviewNote: '',
+            reviewedBy: uid,
+            reviewedByName: name,
+            reviewedAt: serverTimestamp(),
+          });
+          seconds += (d.data() as Clip).durationSec ?? 0;
+        });
+        await batch.commit();
+        approved += snap.size;
+        this.bulkDone.set(approved);
+        if (snap.size < 400) break;
+      }
+      this.toast.success(`Approved ${approved.toLocaleString()} clips · ${formatDuration(seconds)} of audio`);
+      this.bulkOpen.set(false);
+    } catch (err) {
+      this.toast.error(`Stopped after ${approved.toLocaleString()} clips — run it again to finish`, err);
+    } finally {
+      this.bulkRunning.set(false);
+      this.stats.refresh(0);
+      this.reload();
     }
   }
 
