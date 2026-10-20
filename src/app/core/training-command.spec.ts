@@ -2,6 +2,15 @@ import { trainingCommand } from './training-command';
 import { TrainingRun } from './models';
 
 describe('trainingCommand', () => {
+  it('preserves an approved eight-hour limit', () => {
+    const run = { id: 'run1', name: 'full run', task: 'tts', timeoutSeconds: 28800,
+      hyperparams: { epochs: 100, batchSize: 8, learningRate: 2e-5 } } as TrainingRun;
+    expect(trainingCommand(run, { projectId: 'project', region: 'us-central1', artifactRepo: 'repo' },
+      { machineType: 'g2-standard-8', accelerator: 'NVIDIA_L4', count: 1 })).toContain('"timeout": "28800s"');
+    expect(() => trainingCommand({ ...run, timeoutSeconds: NaN },
+      { projectId: 'project', region: 'us-central1', artifactRepo: 'repo' },
+      { machineType: 'g2-standard-8', accelerator: 'NVIDIA_L4', count: 1 })).toThrowError('Invalid runtime limit');
+  });
   it('preserves the planned image if the configured release later changes', () => {
     const run = { id: 'run1', name: 'first run', task: 'tts', trainerImage: 'registry/tts@sha256:frozen',
       manifestUri: 'gs://bucket/manifest.jsonl', baseModel: 'UBC-NLP/Simba-TTS-lin',

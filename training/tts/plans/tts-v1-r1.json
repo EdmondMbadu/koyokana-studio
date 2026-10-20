@@ -1,0 +1,33 @@
+{
+  "serviceAccount": "tts-trainer@koyokana-studio.iam.gserviceaccount.com",
+  "scheduling": {
+    "timeout": "28800s",
+    "restartJobOnWorkerRestart": false
+  },
+  "workerPoolSpecs": [
+    {
+      "machineSpec": {
+        "machineType": "g2-standard-8",
+        "acceleratorType": "NVIDIA_L4",
+        "acceleratorCount": 1
+      },
+      "replicaCount": 1,
+      "diskSpec": {
+        "bootDiskType": "pd-ssd",
+        "bootDiskSizeGb": 100
+      },
+      "containerSpec": {
+        "imageUri": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb",
+        "args": [
+          "--manifest=gs://koyokana-studio.firebasestorage.app/datasets/tts-v1/manifest.jsonl",
+          "--base-model=UBC-NLP/Simba-TTS-lin",
+          "--epochs=100",
+          "--learning-rate=0.00002",
+          "--batch-size=8",
+          "--output=gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1/",
+          "--run-id=157b3de4f137cb77eeb1"
+        ]
+      }
+    }
+  ]
+}

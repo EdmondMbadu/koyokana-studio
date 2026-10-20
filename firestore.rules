@@ -126,6 +126,53 @@ service cloud.firestore {
     match /runs/{id} {
       allow read: if isMember();
       allow write: if isAdmin();
+
+      // One immutable protocol/seed per listener and run. Optional revealedAt
+      // ends the organizer's blind session. Answers are create-only.
+      match /listeningSessions/{uid} {
+        function validSession(d) {
+          return d.keys().hasAll(['uid', 'runId', 'protocolVersion', 'indexSha256', 'seed', 'createdAt'])
+            && d.keys().hasOnly(['uid', 'runId', 'protocolVersion', 'indexSha256', 'seed', 'createdAt', 'revealedAt'])
+            && d.uid == uid && d.runId == id && d.protocolVersion == 1
+            && d.indexSha256 is string && d.indexSha256.matches('[a-f0-9]{64}')
+            && d.seed is int && d.seed >= 0 && d.seed <= 2147483647
+            && d.createdAt is timestamp
+            && (!('revealedAt' in d) || d.revealedAt is timestamp);
+        }
+        allow read: if isAdmin() || (isMember() && request.auth.uid == uid);
+        allow create: if isMember() && request.auth.uid == uid
+          && validSession(request.resource.data) && !('revealedAt' in request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && get(/databases/$(database)/documents/runs/$(id)).data.task == 'tts';
+        allow update: if isAdmin() && request.auth.uid == uid
+          && validSession(request.resource.data) && changedOnly(['revealedAt'])
+          && request.resource.data.revealedAt == request.time;
+        allow delete: if false;
+
+        match /responses/{answerId} {
+          function validAnswer(d) {
+            return d.keys().hasAll(['listenerId', 'runId', 'sampleId', 'variant', 'phase', 'heard',
+                'intelligibility', 'naturalness', 'soundsLikeEdmond', 'transcript', 'createdAt'])
+              && d.keys().hasOnly(['listenerId', 'runId', 'sampleId', 'variant', 'phase', 'heard',
+                'intelligibility', 'naturalness', 'soundsLikeEdmond', 'transcript', 'createdAt'])
+              && d.listenerId == uid && d.runId == id
+              && d.sampleId is string && d.sampleId.matches('[A-Za-z0-9_-]{1,128}')
+              && d.variant in ['original', 'processed', 'baseline', 'trained']
+              && d.heard == true && d.soundsLikeEdmond is bool
+              && d.transcript is string && d.transcript.size() <= 2000
+              && d.createdAt is timestamp && d.createdAt == request.time
+              && ((d.phase == 'rating' && answerId.matches('r-[0-9]{1,4}')
+                  && d.intelligibility is int && d.intelligibility >= 1 && d.intelligibility <= 5
+                  && d.naturalness is int && d.naturalness >= 1 && d.naturalness <= 5 && d.transcript == '')
+                || (d.phase == 'transcription' && answerId.matches('t-[0-9]')
+                  && d.intelligibility == 0 && d.naturalness == 0 && d.soundsLikeEdmond == false));
+          }
+          allow read: if isAdmin() || (isMember() && request.auth.uid == uid);
+          allow create: if isMember() && request.auth.uid == uid && validAnswer(request.resource.data)
+            && !('revealedAt' in get(/databases/$(database)/documents/runs/$(id)/listeningSessions/$(uid)).data);
+          allow update, delete: if false;
+        }
+      }
     }
   }
 }

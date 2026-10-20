@@ -120,6 +120,11 @@
             <input id="r-git" class="input mono" placeholder="e.g. 3f2a9c1" [ngModel]="gitCommit()" (ngModelChange)="gitCommit.set($event)" />
           </div>
           <div class="field">
+            <label for="r-runtime">Maximum runtime (hours)</label>
+            <input id="r-runtime" class="input" type="number" min="1" max="168" step="1" [ngModel]="runtimeHours()" (ngModelChange)="runtimeHours.set(+$event)" />
+            <span class="hint">Stops the job at this limit. Include time for validation and sample exports. This is a time limit, not a spending cap.</span>
+          </div>
+          <div class="field">
             <label for="r-notes">Notes</label>
             <input id="r-notes" class="input" placeholder="Hypothesis for this run" [ngModel]="runNotes()" (ngModelChange)="runNotes.set($event)" />
           </div>
@@ -154,7 +159,7 @@
           <pre class="cmd mono">{{ command(r) }}</pre>
           <span class="hint">
             @if (r.task === 'tts') {
-              Uses the run’s pinned training image and stops after four hours. Exports model files, metrics, and real/baseline/trained samples. Freeze a new dataset and plan a new run if a preflight check fails.
+              Uses the run’s pinned training image and stops after {{ (r.timeoutSeconds ?? 14400) / 3600 }} hours. Exports model files, metrics, and comparison samples. A registered job continues in Google Cloud when your computer is closed. Do not submit the command again for a run that already has a job ID.
             } @else {
               Expects <span class="mono">stt-train:latest</span>. The speech-to-text training container is a later phase.
             }

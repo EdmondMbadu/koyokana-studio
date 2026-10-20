@@ -137,6 +137,7 @@ export interface TrainingRun {
   manifestUri: string;
   baseModel: string;
   trainerImage?: string;
+  timeoutSeconds?: number;
   machine: string;
   hyperparams: { epochs: number; learningRate: number; batchSize: number };
   gitCommit: string;

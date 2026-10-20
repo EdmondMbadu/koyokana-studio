@@ -15,7 +15,7 @@
     "wav_files_exported": 23
   },
   "studio_verification": {
-    "angular_tests_passed": 18,
+    "angular_tests_passed": 24,
     "production_build_passed": true,
     "hosting_deployed": true,
     "served_index_and_configuration_bundles_match_build": true,
@@ -25,7 +25,9 @@
     "manifest_anonymous_access_denied": true,
     "manifest_authorization_preflight_verified": true,
     "manifest_bearer_token_created": false,
-    "verified_bundles": 3
+    "verified_bundles": 3,
+    "rules_tests_passed": 24,
+    "listening_page_deployed": true
   },
   "dataset": {
     "name": "tts-v1",
@@ -64,11 +66,14 @@
   "full_experiment": {
     "name": "tts-v1-r1",
     "registry_id": "157b3de4f137cb77eeb1",
-    "state": "planned",
-    "launched": false,
+    "state": "running",
+    "launched": true,
     "epochs": 100,
     "batch_size": 8,
-    "timeout_seconds": 14400
+    "timeout_seconds": 28800,
+    "job": "projects/303635763719/locations/us-central1/customJobs/7882801358091321344",
+    "verified_optimizer_step": 1500,
+    "checkpoint_1000_uploaded": true
   },
   "data_preflight": {
     "job": "projects/303635763719/locations/us-central1/customJobs/2541743306262446080",
@@ -96,5 +101,6 @@
   },
   "all_verification_jobs_terminal": true,
   "deprecated_v1_tag_removed": true,
-  "completed_at_utc": "2026-10-19T22:09:35.298470+00:00"
+  "completed_at_utc": "2026-10-19T22:09:35.298470+00:00",
+  "last_full_run_check_utc": "2026-10-20T00:51:12.578827+00:00"
 }

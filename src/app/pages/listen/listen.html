@@ -1,0 +1,71 @@
+<div class="page">
+  <header class="page-header">
+    <div><h1 class="page-title">Listen</h1><p class="page-sub">Help choose a clear Lingala voice that sounds at home in Kinshasa.</p></div>
+    <a class="btn btn-secondary" routerLink="/training" [hidden]="!auth.isAdmin()">Training runs <app-icon name="arrow-right" /></a>
+  </header>
+  <div class="run-picker field">
+    <label for="listen-run">Voice test</label>
+    <select id="listen-run" class="select" [ngModel]="runId()" (ngModelChange)="openRun($event)" [disabled]="loading() || saving() || resultsLoading()">
+      @for (r of runs(); track r.id) { <option [value]="r.id">{{ r.name }} · {{ r.datasetName }}</option> }
+    </select>
+  </div>
+  @if (error()) { <div class="notice" role="alert">{{ error() }}
+    @if (index() && !showResults()) { <button class="btn btn-ghost btn-sm" (click)="retryAudio()" [disabled]="audioLoading()">Retry audio</button> }
+    @else { <button class="btn btn-ghost btn-sm" (click)="openRun(runId())" [disabled]="loading()">Retry</button> }
+  </div> }
+  @if (loading()) {
+    <div class="card empty"><span class="spinner"></span><p>Loading voice test…</p></div>
+  } @else if (waiting()) {
+    <div class="card empty"><div class="empty-icon"><app-icon name="cpu" [size]="24" /></div>
+      <h3>The voice test is being prepared</h3><p>Training and sample generation happen in Google Cloud. You can close this page and return later.</p>
+      <button class="btn btn-secondary" (click)="openRun(runId())">Check for samples</button>
+    </div>
+  } @else if (!runs().length) {
+    <div class="card empty"><h3>No voice tests yet</h3><p>A training run must export its samples first.</p></div>
+  } @else if (showResults()) {
+    <div class="card results">
+      <div class="card-body stack"><div class="row" style="justify-content:space-between"><h2>Listening results</h2>
+        <button class="btn btn-secondary btn-sm" (click)="exportResults()" [disabled]="resultsLoading() || !allResponses().length">Export results</button></div>
+        <p class="muted">Held-out sentences and new phone phrases are reported separately. WER is total word edits divided by reference words from the write-down tests; lower is better. Case, accents and punctuation are ignored. WER can exceed 100%.</p>
+        <p class="muted">Each listener gets up to ten write-down sentences, balanced across the four versions. These small samples are exploratory; use several listeners and review their individual answers before deciding.</p>
+      </div>
+      @if (resultsLoading()) { <div class="empty"><span class="spinner"></span></div> }
+      @else if (!results().length) { <div class="empty"><p>No saved answers yet.</p></div> }
+      @else { <div class="table-wrap"><table class="table"><thead><tr><th>Sentences / voice</th><th>Listeners / ratings</th><th>Understandable / 5</th><th>Kinshasa / 5</th><th>Sounds like Edmond</th><th>WER / write-downs</th></tr></thead><tbody>
+        @for (r of results(); track r.kind + r.variant) { <tr><td>{{ r.kind === 'held-out' ? 'Held-out' : 'New phone' }} · {{ r.label }}</td><td>{{ r.listeners }} / {{ r.ratings }}</td><td>{{ score(r.intelligibility) }}</td><td>{{ score(r.naturalness) }}</td><td>{{ percent(r.recognition) }}</td><td>{{ percent(r.wer) }} / {{ r.transcriptions }}</td></tr> }
+      </tbody></table></div> }
+      <div class="card-body"><p class="muted">Voice identities have been revealed. Continue your own blind test in a later run.</p></div>
+    </div>
+  } @else if (index()) {
+    <div class="test-progress"><span>{{ completed() }} of {{ trials().length }} answers saved</span><span>Your progress is saved after each answer.</span></div>
+    <div class="progress"><span [style.width.%]="100 * completed() / trials().length"></span></div>
+    @if (finished()) {
+      <div class="card empty"><div class="empty-icon"><app-icon name="check" [size]="24" /></div><h3>Thank you. Your answers are saved.</h3><p>Your listening test is complete. The team will compare the voices after several people have listened.</p></div>
+    } @else if (current(); as trial) {
+      <section class="card listening-card">
+        <div class="card-body stack">
+          <div class="row"><span class="badge">{{ trial.phase === 'transcription' ? '1 · Write what you hear' : '2 · Rate the voices' }}</span><span class="muted">Sentence {{ trial.sentenceNumber }} · version {{ trial.letter }}</span></div>
+          @if (trial.phase === 'transcription') {
+            <h2>What did the speaker say?</h2><p class="muted">Use headphones in a quiet place. Listen, then write the Lingala words you heard. The text and other versions stay hidden until all {{ transcriptionCount() }} write-down tests are saved. Please do not ask another person or use transcription software.</p>
+          } @else {
+            <h2 lang="ln">{{ trial.sample.text }}</h2><p class="muted">Each version is shuffled for every listener and sentence. Judge the voice you hear now; A, B, C and D do not identify a particular voice.</p>
+          }
+          @if (audioLoading()) { <div class="audio-wait"><span class="spinner"></span> Loading audio…</div> }
+          @else if (audioUrl()) { <audio controls preload="auto" controlsList="nodownload noplaybackrate" [src]="audioUrl()" (ended)="heard.set(true)" (error)="error.set('Audio could not play. Retry loading it.')" aria-label="Blind voice sample"></audio> }
+          <span class="hint">{{ heard() ? 'Listened. You can replay before saving.' : 'Play the full clip before saving your answer.' }}</span>
+          @if (trial.phase === 'transcription') {
+            <div class="field"><label for="listen-transcript">Words you heard</label><textarea id="listen-transcript" class="input" rows="3" lang="ln" maxlength="2000" autocomplete="off" spellcheck="false" [ngModel]="transcript()" (ngModelChange)="transcript.set($event)" [disabled]="saving() || unintelligible()"></textarea></div>
+            <label class="check-line"><input type="checkbox" [ngModel]="unintelligible()" (ngModelChange)="unintelligible.set($event)" [disabled]="saving()" /> I could not understand any words</label>
+          } @else {
+            <fieldset [disabled]="saving()"><legend>Is it easy to understand?</legend><div class="scale">@for (n of ratings; track n) { <label [class.chosen]="intelligibility() === n"><input type="radio" name="intelligibility" [value]="n" [ngModel]="intelligibility()" (ngModelChange)="intelligibility.set(+$event)" />{{ n }}</label> }</div><div class="scale-ends"><span>1 · Very hard</span><span>5 · Very easy</span></div></fieldset>
+            <fieldset [disabled]="saving()"><legend>Does it sound like someone from Kinshasa?</legend><div class="scale">@for (n of ratings; track n) { <label [class.chosen]="naturalness() === n"><input type="radio" name="naturalness" [value]="n" [ngModel]="naturalness()" (ngModelChange)="naturalness.set(+$event)" />{{ n }}</label> }</div><div class="scale-ends"><span>1 · Not at all</span><span>5 · Very much</span></div></fieldset>
+            <fieldset [disabled]="saving()"><legend>Does this sound like Edmond?</legend><p class="hint">Listeners should know Edmond’s voice before taking this test.</p><div class="recognition"><label><input type="radio" name="recognition" [value]="true" [ngModel]="soundsLikeEdmond()" (ngModelChange)="soundsLikeEdmond.set($event)" /> Yes</label><label><input type="radio" name="recognition" [value]="false" [ngModel]="soundsLikeEdmond()" (ngModelChange)="soundsLikeEdmond.set($event)" /> No</label></div></fieldset>
+          }
+          <button class="btn btn-primary next" (click)="saveAnswer()" [disabled]="!canSave()">@if (saving()) { <span class="spinner"></span> } Save and continue <app-icon name="arrow-right" /></button>
+          <p class="hint">Saved answers are final, so the first impression stays intact. Take a break whenever you need; return with the same account to continue. Each listener needs their own studio account.</p>
+        </div>
+      </section>
+    }
+    @if (auth.isAdmin()) { <div class="admin-results"><p class="hint">For the study organizer. Opening results reveals the voice identities and ends your blind session on this page.</p><button class="btn btn-secondary btn-sm" (click)="loadResults()" [disabled]="saving() || audioLoading()">Reveal organizer results</button></div> }
+  }
+</div>

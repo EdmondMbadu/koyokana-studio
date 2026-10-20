@@ -9,7 +9,9 @@ two optimizer steps completed at batch size 8, all 33 held-out clips evaluated,
 43 prompts generated, and 119 WAVs plus the model/tokenizer and optimizer checkpoint
 uploaded successfully. The released image is `v1.0.1`; 18 studio tests and nine
 Python tests pass. This verifies execution, not voice quality after a full run.
-The separate 100-epoch experiment remains planned and unlaunched.
+The first 100-epoch experiment, `tts-v1-r1`, is now running on one L4 with an
+approved eight-hour limit. Its job ID and verified launch configuration are in
+`plans/tts-v1-r1-job.json`. A running job continues independently of the laptop.
 
 ## Correction to the original plan
 
@@ -142,17 +144,28 @@ Check availability again before future runs; quota is distinct from GPU capacity
 2. Confirm the L4 quota is granted and the tested `tts-train:v1.0.1` image is present.
 3. Open **Training → tts-v1-r1**, which is already planned with `tts-v1`,
    **Simba Lingala (MMS / VITS)**, L4, 100 epochs, batch size 8, and learning rate
-   0.00002. The full experiment has not been launched. For later experiments,
+   0.00002. The first full experiment is registered with Vertex job
+   `7882801358091321344`; do not submit it again. For later experiments,
    use **Plan run**. Copy the generated command. The planned run retains the exact trainer image
    so a later release cannot silently change it. The command writes a JSON job spec with a dedicated
-   training identity, 100 GB disk and **four-hour runtime limit**, then submits
+   training identity, 100 GB disk and the run's recorded runtime limit, then submits
    it to Vertex AI. The time limit bounds runtime, not a fixed dollar amount;
    builds, disks and artifact storage also cost money.
 4. Paste the Vertex job ID into the run registry. Training does not update
    Firestore automatically; the registry status remains a manual entry.
 5. Inspect `succeeded.json`, then listen to `samples/index.json` and its WAVs.
    A successful job proves execution, not that the trained voice is good.
-   The Listen/scoring page is a separate step and is not implemented here.
+   Studio's **Listen** page requires the final success marker before loading the
+   index. Each signed-in listener gets a saved random order, up to ten initial
+   held-out write-down trials (before seeing any transcript), then blind ratings
+   for all available versions: original, processed, UBC baseline and trained.
+   New phone phrases have baseline and trained versions only. Each clip gets two
+   1–5 scores and a yes/no Edmond-identity score. First answers are immutable;
+   reload resumes the same session. Organizer results separate held-out and new
+   phrases, compute word-weighted WER, and export the raw answers for future
+   run comparisons. Revealing organizer results ends that organizer's blind
+   session. Blinding hides identities in the interface; client-accessible audio
+   metadata is not a security boundary against deliberate inspection.
 
 Direct container arguments match Studio:
 

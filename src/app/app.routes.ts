@@ -49,6 +49,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/datasets/datasets').then((m) => m.Datasets),
       },
       {
+        path: 'listen',
+        title: 'Listen · Koyokana Studio',
+        loadComponent: () => import('./pages/listen/listen').then((m) => m.Listen),
+      },
+      {
         path: 'training',
         canActivate: [adminGuard],
         title: 'Training · Koyokana Studio',

@@ -1,0 +1,37 @@
+{
+  "name": "tts-v1-r1",
+  "job": "projects/303635763719/locations/us-central1/customJobs/7882801358091321344",
+  "state": "running",
+  "checked_at_utc": "2026-10-20T00:51:12.578827+00:00",
+  "log_timestamp": "2026-10-20T00:50:25.885056121Z",
+  "optimizer_step": 1500,
+  "target_steps": 9600,
+  "last_logged_training_loss": 30.1,
+  "timeout_seconds": 28800,
+  "actual_gpu": "NVIDIA L4",
+  "train_clips": 767,
+  "eval_clips": 33,
+  "manifest_generation": "1792443774271937",
+  "checkpoint_1000_cloud_files": 7,
+  "checkpoint_1000_bytes": 997450528,
+  "held_out_validations_completed": 2,
+  "cloud_job_independent_of_laptop": true,
+  "final_model_and_samples_verified": false,
+  "listening_page": {
+    "url": "https://koyokana-studio.web.app/listen?run=157b3de4f137cb77eeb1",
+    "deployed": true,
+    "browser_tests_passed": 24,
+    "rules_tests_passed": 24,
+    "production_build_passed": true,
+    "live_html_and_three_feature_bundles_match": true,
+    "local_end_to_end_checks": [
+      "authenticated audio playback",
+      "write-downs before transcript disclosure",
+      "immutable first answers",
+      "seed and progress survive reload",
+      "two ratings and recognition saved",
+      "word-error results and JSON export",
+      "organizer reveal persists across reload"
+    ]
+  }
+}

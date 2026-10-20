@@ -21,10 +21,12 @@ export function trainingCommand(
   machine: { machineType: string; accelerator: string; count: number },
 ): string {
   if (!/^[A-Za-z0-9_-]+$/.test(run.id)) throw new Error('Invalid run ID');
+  const timeout = run.timeoutSeconds ?? 14400;
+  if (!Number.isInteger(timeout) || timeout < 3600 || timeout > 604800) throw new Error('Invalid runtime limit');
   const { projectId, region } = cloud;
   const spec = {
     ...(run.task === 'tts' ? { serviceAccount: `tts-trainer@${projectId}.iam.gserviceaccount.com` } : {}),
-    scheduling: { timeout: '14400s', restartJobOnWorkerRestart: false },
+    scheduling: { timeout: `${timeout}s`, restartJobOnWorkerRestart: false },
     workerPoolSpecs: [{
       machineSpec: { machineType: machine.machineType, acceleratorType: machine.accelerator, acceleratorCount: machine.count },
       replicaCount: 1,

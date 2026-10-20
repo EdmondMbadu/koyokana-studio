@@ -21,6 +21,7 @@ service firebase.storage {
     match /recordings/{uid}/{file} {
       allow read: if isMember();
       allow create: if request.auth != null
+        && resource == null
         && request.auth.uid == uid
         && isMember()
         && file.matches('[A-Za-z0-9]+\\.wav')
@@ -33,7 +34,7 @@ service firebase.storage {
     // Frozen dataset manifests.
     match /datasets/{name}/{file} {
       allow read: if isMember();
-      allow create: if isAdmin() && request.resource.size < 500 * 1024 * 1024;
+      allow create: if resource == null && isAdmin() && request.resource.size < 500 * 1024 * 1024;
       allow update: if false;
       allow delete: if isAdmin();
     }

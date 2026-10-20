@@ -85,6 +85,7 @@ export class Training {
   protected readonly epochs = signal(100);
   protected readonly learningRate = signal(2e-5);
   protected readonly batchSize = signal(8);
+  protected readonly runtimeHours = signal(8);
   protected readonly gitCommit = signal('');
   protected readonly runNotes = signal('');
   protected readonly creating = signal(false);
@@ -149,6 +150,7 @@ export class Training {
     this.epochs.set(h.epochs);
     this.learningRate.set(h.learningRate);
     this.batchSize.set(h.batchSize);
+    this.runtimeHours.set(task === 'tts' ? 8 : 4);
     this.runName.set(d ? this.suggestName(d) : '');
   }
 
@@ -160,6 +162,10 @@ export class Training {
   protected async create() {
     const d = this.dataset();
     if (!d || !this.runName().trim() || this.creating()) return;
+    if (!Number.isInteger(this.runtimeHours()) || this.runtimeHours() < 1 || this.runtimeHours() > 168) {
+      this.toast.error('Use a maximum runtime between 1 and 168 whole hours');
+      return;
+    }
     if (d.task === 'tts' && (d.speakers.length !== 1 || !d.trainCount || !d.evalCount)) {
       this.toast.error('TTS needs a frozen dataset with one speaker and nonempty train/eval splits');
       return;
@@ -182,6 +188,7 @@ export class Training {
         manifestUri: d.manifestUri,
         baseModel: this.baseModel(),
         trainerImage: trainingImage(d.task, environment.gcp),
+        timeoutSeconds: this.runtimeHours() * 3600,
         machine: machine.id,
         hyperparams: {
           epochs: Number(this.epochs()) || 1,

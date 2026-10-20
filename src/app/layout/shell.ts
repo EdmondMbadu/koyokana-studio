@@ -72,6 +72,7 @@ export class Shell {
       show: () => true,
       items: [
         { path: '/record', label: 'Record', icon: 'mic' },
+        { path: '/listen', label: 'Listen', icon: 'volume' },
         ...[{ path: '/review', label: 'Review', icon: 'waves', badge: () => this.stats.pendingClips() }],
       ],
     },

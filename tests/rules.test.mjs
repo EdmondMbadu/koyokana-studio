@@ -7,7 +7,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getBytes } from 'firebase/storage';
+import { ref, uploadBytes, getBytes, deleteObject } from 'firebase/storage';
 
 const OWNER = { uid: 'owner', email: 'mbadungoma@gmail.com', email_verified: true };
 const ALICE = { uid: 'alice', email: 'alice@example.com', email_verified: true };
@@ -31,6 +31,56 @@ const clip = (uid, id, extra = {}) => ({
   speakerId: uid, speakerName: uid, storagePath: `recordings/${uid}/${id}.wav`, durationSec: 3.2,
   sampleRate: 48000, bitDepth: 24, channels: 1, sizeBytes: 1000, qc: { flags: [] }, hasFlags: false,
   status: 'pending', source: 'studio', ...extra,
+});
+
+describe('blind listening scores', () => {
+  const session = uid => ({ uid, runId: 'test-run', protocolVersion: 1,
+    indexSha256: 'a'.repeat(64), seed: 456, createdAt: serverTimestamp() });
+  const response = uid => ({ listenerId: uid, runId: 'test-run', sampleId: 'eval-1',
+    variant: 'trained', phase: 'rating', heard: true, intelligibility: 4, naturalness: 3,
+    soundsLikeEdmond: true, transcript: '', createdAt: serverTimestamp() });
+  const sessionRef = u => doc(db(u), 'runs/test-run/listeningSessions/' + u.uid);
+  const responseRef = (u, id = 'r-0') => doc(db(u), 'runs/test-run/listeningSessions/' + u.uid + '/responses/' + id);
+  beforeEach(async () => {
+    await seed({ 'users/owner': user(OWNER, 'admin'), 'users/alice': user(ALICE, 'recorder'),
+      'users/bob': user(BOB, 'reviewer'), 'users/stranger': user(STRANGER, 'pending'),
+      'runs/test-run': { name: 'test-run', task: 'tts', status: 'succeeded' } });
+  });
+  it('members create and resume their own immutable sessions; others cannot read them', async () => {
+    await assertSucceeds(setDoc(sessionRef(ALICE), session('alice')));
+    await assertSucceeds(getDoc(sessionRef(ALICE)));
+    await assertFails(getDoc(doc(db(BOB), 'runs/test-run/listeningSessions/alice')));
+    await assertSucceeds(getDoc(doc(db(OWNER), 'runs/test-run/listeningSessions/alice')));
+    await assertFails(updateDoc(sessionRef(ALICE), { seed: 999 }));
+    await assertFails(setDoc(sessionRef(STRANGER), session('stranger')));
+    await assertFails(setDoc(doc(db(ALICE), 'runs/test-run/listeningSessions/bob'), session('bob')));
+  });
+  it('only accepts valid first answers by their listener', async () => {
+    await assertFails(setDoc(responseRef(ALICE), response('alice'))); // no parent session
+    await setDoc(sessionRef(ALICE), session('alice'));
+    await assertSucceeds(setDoc(responseRef(ALICE), response('alice')));
+    await assertFails(updateDoc(responseRef(ALICE), { intelligibility: 5 }));
+    await assertFails(setDoc(responseRef(ALICE, 'r-1'), { ...response('alice'), naturalness: 6 }));
+    await assertFails(setDoc(responseRef(ALICE, 'r-1'), { ...response('alice'), intelligibility: 2.5 }));
+    await assertFails(setDoc(responseRef(ALICE, 'r-1'), { ...response('alice'), heard: false }));
+    await assertFails(setDoc(responseRef(ALICE, 'r-1'), { ...response('alice'), listenerId: 'bob' }));
+    await assertFails(setDoc(responseRef(ALICE, 'r-1'), { ...response('alice'), extra: true }));
+  });
+  it('records unintelligible write-downs without permitting later edits', async () => {
+    await setDoc(sessionRef(ALICE), session('alice'));
+    const data = { ...response('alice'), phase: 'transcription', intelligibility: 0,
+      naturalness: 0, soundsLikeEdmond: false, transcript: '' };
+    await assertSucceeds(setDoc(responseRef(ALICE, 't-0'), data));
+    await assertFails(updateDoc(responseRef(ALICE, 't-0'), { transcript: 'new guess' }));
+    await assertFails(setDoc(responseRef(ALICE, 't-10'), data));
+    await assertFails(setDoc(responseRef(ALICE, 't-1'), { ...data, transcript: 'x'.repeat(2001) }));
+  });
+  it('permanently stops organizer scoring after the voices are revealed', async () => {
+    await setDoc(sessionRef(OWNER), session('owner'));
+    await assertSucceeds(updateDoc(sessionRef(OWNER), { revealedAt: serverTimestamp() }));
+    await assertFails(setDoc(responseRef(OWNER), response('owner')));
+    await assertFails(updateDoc(sessionRef(OWNER), { seed: 999 }));
+  });
 });
 
 before(async () => {
@@ -158,6 +208,13 @@ describe('datasets & runs', () => {
 
 describe('storage', () => {
   beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async c => {
+      for (const path of ['recordings/alice/abc123.wav', 'recordings/bob/abc124.wav',
+        'recordings/alice/abc125.wav', 'recordings/stranger/x1.wav', 'datasets/tts-v1/manifest.jsonl']) {
+        try { await deleteObject(ref(c.storage(), path)); }
+        catch (e) { if (e.code !== 'storage/object-not-found') throw e; }
+      }
+    });
     await seed({
       'users/owner': user(OWNER, 'admin'),
       'users/alice': user(ALICE, 'recorder'),
@@ -170,7 +227,7 @@ describe('storage', () => {
     await assertSucceeds(uploadBytes(ref(s, 'recordings/alice/abc123.wav'), wav, { contentType: 'audio/wav' }));
     await assertFails(uploadBytes(ref(s, 'recordings/bob/abc124.wav'), wav, { contentType: 'audio/wav' }));
     await assertFails(uploadBytes(ref(s, 'recordings/alice/abc125.wav'), wav, { contentType: 'text/plain' }));
-    await assertFails(uploadBytes(ref(s, 'recordings/alice/abc123.wav'), wav, { contentType: 'audio/wav' }));
+    await assertFails(uploadBytes(ref(s, 'recordings/alice/abc123.wav'), new Uint8Array([...wav, 1]), { contentType: 'audio/wav' }));
   });
   it('pending users cannot upload or read', async () => {
     const s = ctx(STRANGER).storage();
