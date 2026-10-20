@@ -1,0 +1,95 @@
+{
+  "registry_id": "157b3de4f137cb77eeb1-recovery-1",
+  "job": "projects/303635763719/locations/us-central1/customJobs/4361514215068925952",
+  "state": "succeeded",
+  "source_checkpoint_step": 8000,
+  "target_step": 9600,
+  "checkpoint_interval": 200,
+  "timeout_seconds": 14400,
+  "restoration_verified": {
+    "generator_optimizer_states": 846,
+    "discriminator_optimizer_states": 111,
+    "both_optimizer_max_step": 8000,
+    "foreach": false
+  },
+  "output": "gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1-recovery-1/",
+  "training_complete": true,
+  "verified_optimizer_step": 9600,
+  "checkpoint_8200": {
+    "all_seven_state_files_present": true,
+    "completion_manifest_sha256_matches": true,
+    "total_state_bytes": 997450528
+  },
+  "held_out_evaluation_8500": {
+    "mel": 14.400957494974136,
+    "kl": 42.5787735581398,
+    "mel_kl": 56.97973093390465,
+    "finite": true
+  },
+  "last_checkpoint_step": 9600,
+  "started_at_utc": "2026-10-20T04:15:11Z",
+  "finished_at_utc": "2026-10-20T05:00:11Z",
+  "checkpoint_9600": {
+    "all_seven_state_files_present": true,
+    "completion_manifest_sha256_matches": true,
+    "total_state_bytes": 997450528
+  },
+  "training_validation": {
+    "optimizer_updates": 1600,
+    "first_step": 8001,
+    "last_step": 9600,
+    "cuda_retries_used": 0,
+    "finite_metrics": true,
+    "evaluation_steps": [
+      8500,
+      9000,
+      9500,
+      9600
+    ],
+    "mean_last_200_summed_training_losses": 11.712332882881164,
+    "final_evaluation": {
+      "step": 9600,
+      "attempt": 0,
+      "time": 1792472230.6832945,
+      "val_loss_mel": 13.837756007909775,
+      "val_loss_kl": 44.959680147469044,
+      "val_loss_mel_kl": 58.797435998916626
+    },
+    "inference_reload_missing_weights_warning": false
+  },
+  "model_validation": {
+    "tensor_count": 836,
+    "elements": 83015286,
+    "all_tensors_finite": true,
+    "sample_rate": 16000,
+    "vocabulary_size": 41,
+    "weight_bytes": 332163016,
+    "all_six_downloaded_file_hashes_match": true
+  },
+  "sample_validation": {
+    "all_trained_samples_differ_from_baseline": true,
+    "run_id": "157b3de4f137cb77eeb1-recovery-1",
+    "step": 9600,
+    "training_complete": true,
+    "prompts": {
+      "held-out": 33,
+      "unseen-phone": 10
+    },
+    "wav_files": 119,
+    "all_pcm16_mono_16000": true,
+    "all_non_silent": true,
+    "min_rms": 0.0483855791862893,
+    "max_rms": 0.14081372051011343,
+    "min_seconds": 1.84,
+    "max_seconds": 12.752,
+    "index_sha256": "2d9654a5ab0228d37ce5a293a750897a40c3597d5399462ccf6658826e37aebb"
+  },
+  "registry_finalized": {
+    "runId": "157b3de4f137cb77eeb1-recovery-1",
+    "status": "succeeded",
+    "commitTime": "2026-10-20T05:01:15.065151Z",
+    "verifiedWavCount": 119
+  },
+  "listen_url": "https://koyokana-studio.web.app/listen?run=157b3de4f137cb77eeb1",
+  "human_listening_scores_collected": false
+}

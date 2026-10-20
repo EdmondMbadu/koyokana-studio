@@ -1,0 +1,7 @@
+{
+  "/api/voice/**": {
+    "target": "https://koyokana-studio.web.app",
+    "secure": true,
+    "changeOrigin": true
+  }
+}

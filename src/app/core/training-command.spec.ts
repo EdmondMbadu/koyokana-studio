@@ -2,6 +2,16 @@ import { trainingCommand } from './training-command';
 import { TrainingRun } from './models';
 
 describe('trainingCommand', () => {
+  it('preserves the recovery checkpoint and absolute target instead of starting over', () => {
+    const command = trainingCommand({ id: 'recovery1', name: 'Recovery', task: 'tts', timeoutSeconds: 14400,
+      resumeFrom: 'gs://bucket/runs/original/checkpoints/checkpoint-8000', targetSteps: 9600, checkpointEverySteps: 200,
+      hyperparams: { epochs: 100, batchSize: 8, learningRate: 2e-5 } } as TrainingRun,
+      { projectId: 'project', region: 'us-central1', artifactRepo: 'repo' },
+      { machineType: 'g2-standard-8', accelerator: 'NVIDIA_L4', count: 1 });
+    expect(command).toContain('--resume-from=gs://bucket/runs/original/checkpoints/checkpoint-8000');
+    expect(command).toContain('--max-steps=9600');
+    expect(command).toContain('--save-steps=200');
+  });
   it('preserves an approved eight-hour limit', () => {
     const run = { id: 'run1', name: 'full run', task: 'tts', timeoutSeconds: 28800,
       hyperparams: { epochs: 100, batchSize: 8, learningRate: 2e-5 } } as TrainingRun;
@@ -33,6 +43,6 @@ describe('trainingCommand', () => {
     expect(spec.scheduling.timeout).toBe('14400s');
     expect(spec.workerPoolSpecs[0].containerSpec.args).toContain('--base-model=UBC-NLP/Simba-TTS-lin');
     expect(command).toContain(`--display-name='Edmond'"'"'s first run $(false)'`);
-    expect(spec.workerPoolSpecs[0].containerSpec.imageUri).toContain('tts-train:v1.0.1');
+    expect(spec.workerPoolSpecs[0].containerSpec.imageUri).toContain('tts-train:v1.1.0');
   });
 });

@@ -1,0 +1,145 @@
+{
+  "verified_at_utc": "2026-10-20T05:30:09.815811+00:00",
+  "status": "deployed_and_verified",
+  "url": "https://koyokana-studio.web.app/voice",
+  "source_training_run": "157b3de4f137cb77eeb1-recovery-1",
+  "source_training_step": 9600,
+  "source_model_sha256": "492a18db1e57ddc2b83fbbc72e39be6b4cb9f9e1c3fe4aa95ed11e08f6054967",
+  "inference_model_sha256": "8b7397db891c6fe28791eea9593fedeca77458facf137509b36cf9a710b2447c",
+  "inference_tensors": 762,
+  "build": "db740921-8fd6-451a-b9e2-308cfde31c81",
+  "image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-serve@sha256:07d029595341db199ab8b4e3d92668fb6a2a1ffff3235348ec201c68de57f3a6",
+  "revision": "tts-serve-00001-6hq",
+  "configuration": {
+    "cpu": 2,
+    "memory_gib": 4,
+    "min_instances": 0,
+    "max_instances": 1,
+    "concurrency": 1,
+    "request_timeout_seconds": 55,
+    "user_daily_requests": 200,
+    "global_daily_requests": 500,
+    "request_spacing_seconds": 2,
+    "gpu": false
+  },
+  "security": {
+    "server_checks_firebase_token": true,
+    "server_checks_current_admin_role": true,
+    "persistent_transactional_quotas": true,
+    "missing_and_invalid_tokens_return_401": true,
+    "hosting_rewrite_preserves_authorization": true,
+    "no_private_keys_or_static_credentials": true
+  },
+  "tests": {
+    "angular_browser_tests_passed": 38,
+    "backend_tests_passed": 10,
+    "configuration_tests_passed": 3,
+    "production_build_passed": true,
+    "secret_check_passed": true,
+    "new_sentence_benchmark_training_and_eval_overlap": 0
+  },
+  "real_model_benchmark": {
+    "run_id": "157b3de4f137cb77eeb1-recovery-1",
+    "new_sentences": 10,
+    "median_generation_ms": 1505.0,
+    "results": [
+      {
+        "characters": 51,
+        "generation_ms": 1543,
+        "duration_seconds": 3.984,
+        "wav_sha256": "876012ea5a8adde322d4187f2e9db357719ed9f0f92790ed28c1afd9dc67ffc4"
+      },
+      {
+        "characters": 35,
+        "generation_ms": 1335,
+        "duration_seconds": 3.664,
+        "wav_sha256": "a7bf92fe73b24e55c49e79e96d7488cf818036307fba2de5a0f1102167f89c0e"
+      },
+      {
+        "characters": 36,
+        "generation_ms": 1432,
+        "duration_seconds": 3.92,
+        "wav_sha256": "6d9c54b4de0d14a64ecde6f6345d701337854a4b5262ad950734e918149b8583"
+      },
+      {
+        "characters": 36,
+        "generation_ms": 1247,
+        "duration_seconds": 3.28,
+        "wav_sha256": "6ce4a3c0a61672a7103072917cae4aff1fa5937680d1061c81e268cfa4077bc5"
+      },
+      {
+        "characters": 31,
+        "generation_ms": 920,
+        "duration_seconds": 2.592,
+        "wav_sha256": "ca65a4c6710400a27e322640932ffc5fa218e5ad14b10d1510e89bd2b5d0bad0"
+      },
+      {
+        "characters": 41,
+        "generation_ms": 1525,
+        "duration_seconds": 4.128,
+        "wav_sha256": "6ee20e38a01243ca4b83bc1e1690f273a0ad430f52986502e8cb3faabfaaa2f2"
+      },
+      {
+        "characters": 38,
+        "generation_ms": 1516,
+        "duration_seconds": 4.0,
+        "wav_sha256": "d8a7858c7b943720814397c4bb55546cbf50e350248b5ac5ca5e4ab31e4801a5"
+      },
+      {
+        "characters": 37,
+        "generation_ms": 1494,
+        "duration_seconds": 4.048,
+        "wav_sha256": "8ff6667dbf911ecf0184a9baa97210e4a3212c8f78088f9b2cc44e0331648357"
+      },
+      {
+        "characters": 47,
+        "generation_ms": 1716,
+        "duration_seconds": 4.624,
+        "wav_sha256": "1194bdd47cfd6ae3a6412fc258220692e23da61713e6447aedf5f3316e6a0f48"
+      },
+      {
+        "characters": 62,
+        "generation_ms": 1937,
+        "duration_seconds": 5.328,
+        "wav_sha256": "934bf0d21374368747bffa549ea09fa981e6eace341e135f1d13c31ba84204f9"
+      }
+    ]
+  },
+  "production_ui": {
+    "signed_in_owner_generated_unseen_text": true,
+    "correct_text_shown": true,
+    "download_verified": true,
+    "stale_audio_clearing_tested": true,
+    "live_wave_validation": {
+      "sample_rate": 16000,
+      "channels": 1,
+      "pcm_bits": 16,
+      "duration_seconds": 4.96,
+      "sha256": "1f7b27bb345bcefe75056e0f2323df788c12f9ee2e22343d4b902adc612f03d3",
+      "non_silent": true,
+      "browser_ready_state": 4,
+      "browser_playback_ended": true,
+      "browser_media_error": null
+    },
+    "first_unseen_test_generation_seconds": 6.09,
+    "observed_subsequent_user_clip_generation_seconds": 1.88,
+    "cold_start_latency_not_benchmarked": true
+  },
+  "privacy": {
+    "input_text_persisted": false,
+    "output_audio_persisted_by_service": false,
+    "bounded_ephemeral_cache_bytes": 33554432
+  },
+  "implementation_note": "The model computes in native PyTorch CPU kernels. A Rust HTTP wrapper was not added; the tested training-compatible engine is preserved.",
+  "source_sha256": {
+    "access.py": "f2788910939404c8510511005eedf0998eadc2a5406a67c005e4eafdf13f1987",
+    "app.py": "18ae5b784522d306841a27eab36b2a4ef80b6c93654bd1dc11e0aab7440e4be8",
+    "engine.py": "22792a800f10274e3a888c9a96217ec30e6ee4b846e207239a539508b016bee5",
+    "prepare_model.py": "abd7ca138751e1f65cf401ac86d471eb18131fa1f0de017f6e28d211ef3bec52",
+    "smoke_test.py": "13170856680f51d0d8f19c47501e649cc18c998d164bfa90a9ef9647320a4736",
+    "test_access.py": "4014a36ab71c902ecec9ccbf8adce030bfc8eee419b2681a8c85e1a935900976",
+    "test_service.py": "41cba3047d2034dfebf9b7f40b14b7df7649641550931932b40aaec205761421",
+    "text.py": "f120b53b66b2a7634f3c65992a85a6abf2452a582a73169eff0852387aca8dc5",
+    "wsgi.py": "2a9faa889195efd4a2bfde52aeb0390f449cb35bc9eb11ad54429fc3f7884ee8"
+  }
+}

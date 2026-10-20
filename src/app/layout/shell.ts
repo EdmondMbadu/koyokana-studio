@@ -87,7 +87,10 @@ export class Shell {
     {
       label: 'Models',
       show: () => this.auth.isAdmin(),
-      items: [{ path: '/training', label: 'Training', icon: 'cpu' }],
+      items: [
+        { path: '/voice', label: 'Try your voice', icon: 'keyboard' },
+        { path: '/training', label: 'Training', icon: 'cpu' },
+      ],
     },
     {
       label: 'Workspace',

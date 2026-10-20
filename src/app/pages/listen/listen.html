@@ -17,8 +17,17 @@
     <div class="card empty"><span class="spinner"></span><p>Loading voice test…</p></div>
   } @else if (waiting()) {
     <div class="card empty"><div class="empty-icon"><app-icon name="cpu" [size]="24" /></div>
-      <h3>The voice test is being prepared</h3><p>Training and sample generation happen in Google Cloud. You can close this page and return later.</p>
-      <button class="btn btn-secondary" (click)="openRun(runId())">Check for samples</button>
+      @if (selectedRun()?.status === 'failed' || selectedRun()?.status === 'cancelled') {
+        <h3>This attempt stopped before its samples were ready</h3><p>The training team needs to recover or replace this attempt. Any saved checkpoints remain available. Check the Training page for the current recovery attempt.</p>
+      } @else {
+        <h3>The voice test is being prepared</h3><p>Training and sample generation happen in Google Cloud. You can close this page and return later.</p>
+      }
+      @if (progress(); as p) {
+        <p><b>{{ p.step }} / {{ p.target }} training steps · {{ p.percent.toFixed(1) }}%</b></p>
+        <div class="progress" style="width: min(100%, 420px)"><span [style.width.%]="p.percent"></span></div>
+        <p class="hint">Last update {{ progressTime() }}. This page checks again every minute. Validation and audio exports take additional time.</p>
+      }
+      <button class="btn btn-secondary" (click)="reloadWaiting()">Check for samples</button>
     </div>
   } @else if (!runs().length) {
     <div class="card empty"><h3>No voice tests yet</h3><p>A training run must export its samples first.</p></div>

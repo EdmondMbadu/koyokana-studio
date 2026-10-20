@@ -13,6 +13,8 @@ from pathlib import Path
 
 from data import gs_parts, normalize_text, preprocess_audio, read_manifest
 from storage_io import Store
+from recovery import checkpoint_source, restore_checkpoint, export_checkpoint, CHECKPOINT_FILES
+from storage_io import file_sha256
 
 ROOT = Path(__file__).resolve().parent
 LOG = logging.getLogger('tts-train')
@@ -35,6 +37,10 @@ def parser():
     p.add_argument('--batch-size', type=int, default=8)
     p.add_argument('--max-steps', type=int, default=-1)
     p.add_argument('--save-steps', type=int, default=1000)
+    p.add_argument('--resume-from', help='Verified checkpoint URI from a previous run')
+    p.add_argument('--export-only', action='store_true', help='Export a saved checkpoint without more optimization')
+    p.add_argument('--cuda-retries', type=int, default=1, help='Bounded fresh-process retry after a CUDA illegal access')
+    p.add_argument('--sample-device', choices=['cpu', 'cuda'], default='cpu')
     p.add_argument('--seed', type=int, default=456)
     p.add_argument('--prepare-only', action='store_true')
     p.add_argument('--allow-cpu', action='store_true', help='For explicit smoke testing only')
@@ -52,6 +58,18 @@ def validate_args(args):
         raise ValueError('Invalid learning rate or checkpoint interval')
     if args.max_steps != -1 and args.max_steps < 1:
         raise ValueError('max-steps must be -1 or positive')
+    if args.cuda_retries not in (0, 1):
+        raise ValueError('cuda-retries must be zero or one')
+    if args.export_only and (not args.resume_from or args.prepare_only):
+        raise ValueError('export-only requires a checkpoint and cannot prepare-only')
+    if args.resume_from:
+        checkpoint_source(args.resume_from)
+        if args.resume_from.startswith('gs://'):
+            bucket, prefix = gs_parts(args.resume_from)
+            if not prefix.startswith('runs/') or not args.output.startswith('gs://' + bucket + '/'):
+                raise ValueError('Resume checkpoint must be in the same private run bucket')
+        elif not args.allow_cpu:
+            raise ValueError('Local checkpoint recovery requires explicit CPU testing')
     if args.output.startswith('gs://'):
         bucket, prefix = gs_parts(args.output)
         if prefix.rstrip('/') != 'runs/' + args.run_id:
@@ -136,6 +154,7 @@ def training_config(args, work):
         'weight_disc': 3, 'weight_fmaps': 1, 'weight_gen': 1,
         'weight_kl': 1.5, 'weight_duration': 1, 'weight_mel': 35,
         'fp16': False, 'bf16': False, 'seed': args.seed,
+        'resume_from_checkpoint': getattr(args, '_resume_checkpoint', None),
         'use_cpu': args.allow_cpu,
     }
 
@@ -158,7 +177,8 @@ def make_samples(args, rows, work):
         if text not in seen:
             prompts.append({'id': f'phone-{i:02d}', 'text': phrase, 'model_text': text,
                             'kind': 'unseen-phone', 'reference_uri': None, 'clip_id': None})
-    device = 'cpu' if args.allow_cpu else 'cuda'
+    device = 'cpu' if args.allow_cpu else args.sample_device
+    torch.set_num_threads(4)
     for variant, model_dir in [('baseline', '/opt/models/base'), ('trained', str(work / 'model'))]:
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
         model = VitsModel.from_pretrained(model_dir).to(device).eval()
@@ -194,7 +214,7 @@ def make_samples(args, rows, work):
 def run(args):
     validate_args(args)
     import torch
-    if not args.allow_cpu and not args.prepare_only and not torch.cuda.is_available():
+    if not args.allow_cpu and not args.prepare_only and not args.export_only and not torch.cuda.is_available():
         raise RuntimeError('CUDA GPU unavailable; refusing to silently run paid training on CPU')
     work = Path(args.work_dir).resolve()
     work.mkdir(parents=True, exist_ok=True)
@@ -204,7 +224,7 @@ def run(args):
     provenance = json.loads((ROOT / 'provenance.json').read_text())
     source_hashes = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in (
         'train.py', 'data.py', 'storage_io.py', 'launch_vits.py', 'bootstrap.py', 'patch_vits.py',
-        'requirements.txt', 'provenance.json', 'phone-phrases.json')}
+        'requirements.txt', 'provenance.json', 'phone-phrases.json', 'recovery.py', 'safe_optimizer.py')}
     write_json(work / 'run.json', {'schema_version': 1, 'arguments': vars(args),
         'provenance': provenance, 'started_at': time.time(),
         'source_sha256': source_hashes, 'python_version': sys.version, 'torch_version': torch.__version__,
@@ -219,49 +239,90 @@ def run(args):
             write_json(work / 'prepared.json', {'status': 'prepared', 'training_started': False})
             store.upload(work / 'prepared.json', args.output.rstrip('/') + '/prepared.json')
             return
+        resumed = None
+        if args.resume_from:
+            resumed = restore_checkpoint(args, store, work, rows)
+            args._resume_checkpoint = resumed['local_checkpoint']
+            write_json(work / 'resumed.json', resumed)
+            store.upload(work / 'resumed.json', args.output.rstrip('/') + '/resumed.json', allow_identical=True)
         config = training_config(args, work)
         write_json(work / 'training-config.json', config)
         store.upload(work / 'training-config.json', args.output.rstrip('/') + '/training-config.json')
         env = dict(os.environ, ACCELERATE_MIXED_PRECISION='no',
-                   ACCELERATE_USE_CPU=str(args.allow_cpu).lower())
+                   ACCELERATE_USE_CPU=str(args.allow_cpu).lower(), CUDA_LAUNCH_BLOCKING='1',
+                   PYTORCH_CUDA_ALLOC_CONF='max_split_size_mb:128,garbage_collection_threshold:0.8')
         if args.output.startswith('gs://'):
             env['TTS_REMOTE_OUTPUT'] = args.output
-        # Stream logs to Cloud Logging and retain an exact local copy.
-        with (work / 'training.log').open('w') as log:
-            process = subprocess.Popen([sys.executable, str(ROOT / 'launch_vits.py'),
-                str(work / 'training-config.json')], env=env, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, text=True, bufsize=1)
-            for line in process.stdout:
-                log.write(line)
-                print(line, end='', flush=True)
-            if process.wait():
-                raise RuntimeError(f'Training process exited with code {process.returncode}')
+        target_step = args.max_steps if args.max_steps > 0 else (
+            (sum(r['split'] == 'train' for r in rows) + args.batch_size - 1) // args.batch_size * args.epochs)
+        if args.export_only:
+            export_checkpoint(args._resume_checkpoint, work / 'model')
+            write_json(work / 'export-source.json', {'checkpoint_step': resumed['step'], 'target_step': target_step})
+            (work / 'metrics.jsonl').write_text(json.dumps({'step': resumed['step'], 'checkpoint_export': True}) + '\n')
+            (work / 'training.log').write_text('Explicit checkpoint export; no optimizer steps were performed.\n')
+        else:
+            # Each retry gets a fresh CUDA process, its own remote namespace,
+            # and only a fully committed checkpoint. Never retry from zero.
+            for attempt in range(args.cuda_retries + 1):
+                env['TTS_ATTEMPT'] = str(attempt)
+                attempt_path = work / f'training-config-attempt-{attempt}.json'
+                write_json(attempt_path, config)
+                store.upload(attempt_path, args.output.rstrip('/') + '/' + attempt_path.name, allow_identical=True)
+                with (work / 'training.log').open('a') as log:
+                    process = subprocess.Popen([sys.executable, str(ROOT / 'launch_vits.py'), str(attempt_path)],
+                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+                    recent = []
+                    for line in process.stdout:
+                        log.write(line)
+                        log.flush()
+                        print(line, end='', flush=True)
+                        recent = (recent + [line])[-120:]
+                    code = process.wait()
+                if not code:
+                    break
+                details = ''.join(recent)
+                checkpoints = sorted((p for p in (work / 'model').glob('checkpoint-*')
+                    if (p / 'complete.json').exists()), key=lambda p: int(p.name.split('-')[1]))
+                if attempt >= args.cuda_retries or 'an illegal memory access' not in details or not checkpoints:
+                    raise RuntimeError(f'Training process exited with code {code}. Last diagnostics:\n{details[-12000:]}')
+                latest = checkpoints[-1]
+                marker = json.loads((latest / 'complete.json').read_text())
+                if any(marker['files'][n] != file_sha256(latest / n) for n in CHECKPOINT_FILES):
+                    raise RuntimeError('Refusing retry from an incomplete checkpoint')
+                config['resume_from_checkpoint'] = str(latest)
+                LOG.warning('CUDA process failed; bounded retry from verified step %s', marker['step'])
         metrics = [json.loads(l) for l in (work / 'metrics.jsonl').read_text().splitlines()]
-        if not any(m.get('step', 0) > 0 and 'train_summed_losses' in m for m in metrics):
+        if not args.export_only and not any(m.get('step', 0) > 0 and 'train_summed_losses' in m for m in metrics):
             raise RuntimeError('Trainer completed without an optimizer step')
-        samples = make_samples(args, rows, work)
+        last_step = max(m.get('step') or 0 for m in metrics)
+        if not args.export_only and last_step != target_step:
+            raise RuntimeError(f'Training stopped at {last_step}; expected exactly {target_step}')
         # Optimizer states are already backed up separately; export inference files.
         for path in sorted((work / 'model').iterdir()):
             if path.is_file():
-                store.upload(path, args.output.rstrip('/') + '/model/' + path.name)
-        store.upload_tree(work / 'samples', args.output.rstrip('/') + '/samples')
+                store.upload(path, args.output.rstrip('/') + '/model/' + path.name, allow_identical=True)
+        # The complete trained model is durable before sample generation starts.
+        samples = make_samples(args, rows, work)
+        store.upload_tree(work / 'samples', args.output.rstrip('/') + '/samples', allow_identical=True)
         for filename in ('training.log', 'metrics.jsonl'):
-            store.upload(work / filename, args.output.rstrip('/') + '/' + filename)
+            store.upload(work / filename, args.output.rstrip('/') + '/' + filename, allow_identical=True)
         write_json(work / 'succeeded.json', {'status': 'succeeded', 'sample_count': samples,
-            'finished_at': time.time(), 'last_training_step': max(m.get('step') or 0 for m in metrics),
+            'finished_at': time.time(), 'last_training_step': last_step,
+            'target_step': target_step, 'training_complete': last_step == target_step,
+            'recovered_from_step': resumed['step'] if resumed else None,
             'model_uri': args.output.rstrip('/') + '/model/',
             'samples_uri': args.output.rstrip('/') + '/samples/index.json'})
-        store.upload(work / 'succeeded.json', args.output.rstrip('/') + '/succeeded.json')
+        store.upload(work / 'succeeded.json', args.output.rstrip('/') + '/succeeded.json', allow_identical=True)
         LOG.info('Training and sample generation succeeded: %s', args.output)
     except BaseException as error:
         write_json(work / 'failed.json', {'status': 'failed', 'error': str(error), 'finished_at': time.time()})
-        try:
-            store.upload(work / 'failed.json', args.output.rstrip('/') + '/failed.json')
-            for name in ('training.log', 'metrics.jsonl'):
-                if (work / name).exists():
-                    store.upload(work / name, args.output.rstrip('/') + '/failure-' + name)
-        except Exception:
-            LOG.exception('Could not persist failure diagnostics')
+        for source, destination in [('failed.json', 'failed.json'), ('training.log', 'failure-training.log'),
+                                    ('metrics.jsonl', 'failure-metrics.jsonl')]:
+            if (work / source).exists():
+                try:
+                    store.upload(work / source, args.output.rstrip('/') + '/' + destination, allow_identical=True)
+                except Exception:
+                    LOG.exception('Could not persist %s; original failure retained', source)
         raise
 
 

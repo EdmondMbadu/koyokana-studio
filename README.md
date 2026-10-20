@@ -123,12 +123,48 @@ auto-gain are switched off. Chrome gives the cleanest signal.
 1. **Datasets → New dataset**: scan approved clips, freeze → `manifest.jsonl` in Storage.
 2. **Training → Plan run**: pick the dataset, base model and GPU. The run drawer shows a
    ready-to-paste `gcloud ai custom-jobs create …` command. It expects a training image at
-   `us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train:v1.0.1` for TTS.
+   the pinned `tts-train:v1.1.0` image for TTS.
    The TTS container, validation procedure and output contract are documented in
    [training/tts/README.md](training/tts/README.md). The first TTS test uses the
    published `UBC-NLP/Simba-TTS-lin` checkpoint; `facebook/mms-tts-lin` is unavailable.
    STT container implementation is a later phase.
 3. Paste the Vertex AI job ID back into the run, then log WER/CER (STT) or MOS (TTS).
+
+## Type Lingala and hear the trained voice
+
+Administrators can open **Models → Try your voice** (`/voice`), enter up to
+250 normalized characters, generate speech, replay it, and download the 16 kHz
+mono PCM WAV. The service uses the completed 9,600-step recovery model; it does
+not retrain, translate the text, or send it to a third-party speech provider.
+Spelling normalization matches training, and the page displays the actual speech
+text. Write numbers as spoken words. A new generation or text edit clears old
+audio so the player cannot silently represent a previous passage.
+
+`serving/tts` contains the CPU inference service. Its private image includes only
+the inference weights, with source and package SHA-256 checks, and refuses missing
+or unexpected model keys. `prepare_model.py` packages an already downloaded,
+verified training export; weights are ignored by Git. The Docker build runs the
+API/access tests and synthesizes ten sentences absent from the frozen dataset.
+`serving/tts/validation.json` records the deployed image and verification results.
+
+Cloud Run uses request billing, 2 CPUs, 4 GiB RAM, one concurrent request, a
+maximum of one instance, and zero minimum instances. Model loading after idle
+can delay the first response. Firebase Hosting forwards `/api/voice/**` to the
+service and pins its revision with the frontend release. The service verifies
+Firebase ID tokens and checks the current Firestore administrator role on every
+request. A dedicated runtime account checks roles and enforces transactional
+limits: 200 requests per user per UTC day, 500 across the studio, and two seconds
+between requests. These limits bound synthesis usage; they are not a billing cap.
+They can be reduced using `VOICE_USER_DAILY_LIMIT` and `VOICE_DAILY_LIMIT`.
+Submitted text and generated audio are not persisted; a small bounded in-memory
+cache is lost when the instance stops. Training data and listening scores are
+kept separate.
+
+For local development with production Firebase login, `npm start` proxies the
+speech API to the deployed service using `proxy.conf.json`. Restart the development
+server after adding or changing proxy configuration. Firebase emulator tokens
+are deliberately rejected by the production speech service. Never disable token
+verification to make emulator requests work.
 
 ## Scripts
 

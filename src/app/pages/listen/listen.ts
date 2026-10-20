@@ -2,12 +2,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { collection, doc, getDocs, orderBy, query, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { getBlob, ref } from 'firebase/storage';
+import { getBlob, listAll, ref } from 'firebase/storage';
 import { AuthService } from '../../core/auth.service';
 import { bucketName, db, storage } from '../../core/firebase';
 import { LISTEN_PROTOCOL, ListenResponse, SampleIndex, listenTrials, listeningSummary, validateSampleIndex } from '../../core/listening-test';
 import { TrainingRun } from '../../core/models';
 import { Icon } from '../../ui/icon';
+import { listeningRunId } from '../../core/run-recovery';
+import { TrainingProgress, latestTrainingMetric, trainingProgress } from '../../core/training-progress';
 
 interface ListenSession { uid: string; runId: string; protocolVersion: number; indexSha256: string; seed: number; revealedAt?: unknown }
 
@@ -27,6 +29,8 @@ export class Listen {
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly waiting = signal(false);
+  protected readonly progress = signal<TrainingProgress | null>(null);
+  protected readonly progressTime = computed(() => this.progress() ? new Date(this.progress()!.updated).toLocaleTimeString() : '');
   protected readonly audioUrl = signal('');
   protected readonly audioLoading = signal(false);
   protected readonly heard = signal(false);
@@ -56,7 +60,10 @@ export class Listen {
   protected readonly score = (n: number | null) => n === null ? '—' : n.toFixed(2);
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => { this.loadVersion++; this.clearAudio(); });
+    const poll = setInterval(() => {
+      if (this.waiting() && !this.loading()) void this.reloadWaiting();
+    }, 60000);
+    inject(DestroyRef).onDestroy(() => { clearInterval(poll); this.loadVersion++; this.clearAudio(); });
     void this.loadRuns();
   }
 
@@ -76,10 +83,38 @@ export class Listen {
     finally { this.loading.set(false); }
   }
 
+  protected async reloadWaiting() {
+    this.loading.set(true);
+    await this.loadRuns();
+  }
+
+  private async loadProgress(id: string, version: number) {
+    const target = this.selectedRun()?.targetSteps;
+    if (!target) return;
+    try {
+      const root = await listAll(ref(storage, `runs/${id}/metrics`));
+      const attempts = root.prefixes.filter(p => /^attempt-[0-9]+$/.test(p.name))
+        .sort((a, b) => Number(a.name.split('-')[1]) - Number(b.name.split('-')[1]));
+      const latest = attempts.at(-1); if (!latest) return;
+      const files = await listAll(latest), name = latestTrainingMetric(files.items.map(i => i.name));
+      if (!name) return;
+      const blob = await getBlob(ref(latest, name), 128 * 1024);
+      const progress = trainingProgress(JSON.parse(await blob.text()), target);
+      if (version === this.loadVersion) this.progress.set(progress);
+    } catch (e) {
+      // Progress is supplementary; a missing snapshot must not mask sample
+      // availability or turn an otherwise healthy job into an error page.
+      console.warn('Training progress unavailable', e);
+    }
+  }
+
   protected async openRun(id: string) {
+    try { id = listeningRunId(this.runs(), id); }
+    catch (e) { this.error.set(this.message(e)); this.loading.set(false); return; }
     const version = ++this.loadVersion;
     this.clearAudio(); this.runId.set(id); this.index.set(null); this.answers.set({});
     this.error.set(''); this.waiting.set(false); this.showResults.set(false); this.results.set([]);
+    this.progress.set(null);
     this.loading.set(true);
     this.sessionRevealed = false;
     try {
@@ -122,7 +157,20 @@ export class Listen {
     } catch (e) {
       if (version !== this.loadVersion) return;
       const code = (e as { code?: string }).code;
-      if (code === 'storage/object-not-found') this.waiting.set(true);
+      if (code === 'storage/object-not-found') {
+        this.waiting.set(true);
+        try {
+          const failure = JSON.parse(await (await getBlob(ref(storage, `runs/${id}/failed.json`), 64 * 1024)).text());
+          if (version === this.loadVersion && failure.status === 'failed') {
+            this.runs.update(runs => runs.map(r => r.id === id ? { ...r, status: 'failed' } : r));
+            if (this.auth.isAdmin()) await updateDoc(doc(db, 'runs', id), { status: 'failed', updatedAt: serverTimestamp() });
+          }
+        } catch (failureRead) {
+          const failureCode = (failureRead as { code?: string }).code;
+          if (failureCode !== 'storage/object-not-found') this.error.set(this.message(failureRead));
+        }
+        await this.loadProgress(id, version);
+      }
       else this.error.set(this.message(e));
     } finally { if (version === this.loadVersion) this.loading.set(false); }
   }

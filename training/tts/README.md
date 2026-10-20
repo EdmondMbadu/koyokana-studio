@@ -4,14 +4,27 @@ This is the `tts-train` image consumed by Studio's **Training → Plan run** com
 It runs one worker with one GPU, reads the frozen Studio JSONL manifest, and writes
 private results under `gs://koyokana-studio.firebasestorage.app/runs/<run-id>/`.
 
-Verified on October 19, 2026 on an actual NVIDIA L4: all 800 frozen clips prepared,
-two optimizer steps completed at batch size 8, all 33 held-out clips evaluated,
-43 prompts generated, and 119 WAVs plus the model/tokenizer and optimizer checkpoint
-uploaded successfully. The released image is `v1.0.1`; 18 studio tests and nine
-Python tests pass. This verifies execution, not voice quality after a full run.
-The first 100-epoch experiment, `tts-v1-r1`, is now running on one L4 with an
-approved eight-hour limit. Its job ID and verified launch configuration are in
-`plans/tts-v1-r1-job.json`. A running job continues independently of the laptop.
+The first 100-epoch experiment, `tts-v1-r1`, stopped at step 8,351 after a CUDA
+illegal memory access. Its complete step-8,000 checkpoint was recovered using
+release `v1.1.0`. The recovery finished successfully on an NVIDIA L4 at
+2026-10-20 05:00:11 UTC (October 19, 10:00 PM Los Angeles), reaching exactly
+9,600 steps with no retry needed. Both optimizers restored their saved state;
+all 1,600 additional training steps and four held-out evaluations had finite
+metrics. The final checkpoint's seven state-file hashes were verified.
+
+All 800 frozen clips were prepared, and the model/tokenizer plus 119 WAVs for
+33 held-out sentences and ten unseen phone phrases were exported. Independent
+checks verified every model-file hash, all 836 saved tensors, and every WAV's
+16 kHz mono PCM format and non-silent audio. All 43 trained samples differ from
+their baseline versions. Cloud Build passed 16 Python tests and three real CPU
+smoke workflows; 31 studio tests and the production build passed. These checks
+verify execution and artifact integrity; Kinshasa listeners still need to judge
+voice quality. See `validation.json` and
+`plans/tts-v1-r1-recovery-1-validation.json` for the full audit.
+
+The studio's original listening link follows the successful recovery. The
+original immutable image and failed attempt are retained. A running Vertex job
+continues independently of the laptop.
 
 ## Correction to the original plan
 
@@ -54,8 +67,9 @@ noncommercial research; resolve licensing before a commercial phone deployment.
    seed 456. These are starting settings, not a guarantee of voice quality.
 6. Saves optimizer/model checkpoints every 1,000 steps, backing them up before
    local pruning. Remote checkpoint directories are immutable and accumulate;
-   include their storage cost when reviewing experiments. The first-run CLI
-   starts fresh; automatic recovery/resumption is not implemented.
+   include their storage cost when reviewing experiments. The recovery CLI
+   verifies and restores a checkpoint explicitly; it never silently starts
+   over if optimizer files, dataset hashes or model provenance do not match.
 7. Reloads the final generator for inference. Produces **every held-back
    sentence**, plus up to ten new phone phrases absent from the entire dataset.
    Each held-back sentence has original-recording provenance, a processed real
@@ -145,7 +159,7 @@ Check availability again before future runs; quota is distinct from GPU capacity
 3. Open **Training → tts-v1-r1**, which is already planned with `tts-v1`,
    **Simba Lingala (MMS / VITS)**, L4, 100 epochs, batch size 8, and learning rate
    0.00002. The first full experiment is registered with Vertex job
-   `7882801358091321344`; do not submit it again. For later experiments,
+   `7882801358091321344` (failed at step 8,351); do not submit it again. For later experiments,
    use **Plan run**. Copy the generated command. The planned run retains the exact trainer image
    so a later release cannot silently change it. The command writes a JSON job spec with a dedicated
    training identity, 100 GB disk and the run's recorded runtime limit, then submits
@@ -190,7 +204,10 @@ runs/<run-id>/
   input-manifest.jsonl        # exact input manifest
   preprocessing.json         # counts, source generations, hashes, per-clip changes
   training-config.json       # exact recipe passed to the trainer
-  checkpoints/checkpoint-N/  # completed optimizer checkpoints
+  checkpoints/attempt-N/checkpoint-S/ # seven optimizer/model files; complete.json written last
+  metrics/attempt-N/          # immutable live loss snapshots every 50 steps and each evaluation
+  resumed.json               # verified source checkpoint, dataset identity and file hashes
+  resume-loaded-N.json        # proof that both optimizers restored their step counters
   model/                     # reloadable Hugging Face VITS model + tokenizer
   samples/index.json         # schema_version=1; sample text/type and private gs:// URIs
   samples/*.wav              # 16 kHz PCM16 mono; baseline/trained/real references
@@ -212,3 +229,40 @@ The dated [validation record](validation.json) lists the immutable image, succes
 build test, dataset snapshot, deployed studio checks, GPU verification job, and
 separate planned full experiment. The GPU mechanics check uses only two optimizer
 steps; it is not a completed voice-quality experiment.
+
+## Recovery safeguards (v1.1.0)
+
+Use a fresh run ID and output prefix, preserving the original failed attempt:
+
+```text
+--resume-from=gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1/checkpoints/checkpoint-8000
+--epochs=100 --batch-size=8 --learning-rate=0.00002 --max-steps=9600 --save-steps=200
+```
+
+The target is **9,600 total optimizer steps**, not 9,600 additional steps. Both
+GAN optimizers, schedulers and RNG states are restored. The frozen manifest,
+raw audio hashes, normalized transcripts and train/eval splits must match.
+Legacy checkpoints do not contain the mid-epoch sampler permutation, so exact
+sample ordering is not claimed. Resume skips the consumed batch positions and
+does not advance an already-started epoch's learning-rate schedule again.
+
+AdamW uses the standard loop implementation (`foreach=False`, `fused=False`),
+including after restoring old optimizer param groups. This reduces temporary
+CUDA allocations; it does not prove a unique cause of the original asynchronous
+illegal access. CUDA launches are synchronous for diagnostic accuracy, gradients
+must be finite before updates, and each attempt writes to a distinct checkpoint
+namespace. Identical acknowledged-late uploads are accepted only after matching
+the stored SHA256 and byte count; different content is never overwritten.
+
+One fresh-process retry is allowed after an illegal CUDA memory access, using
+only the latest verified checkpoint. Other failures stop with their original
+diagnostics. The recovery run uses 200-step checkpoints and a four-hour runtime
+limit. The complete model is uploaded **before** CPU sample generation, so a
+sample-generation failure cannot erase the trained model. `succeeded.json` is
+still last, after all 119 WAVs and the index have been uploaded.
+
+`--export-only --resume-from=...` can independently export a checkpoint on CPU.
+Its success marker records the actual checkpoint step and whether full training
+was completed; partial checkpoint exports are never labelled as 9,600 steps.
+Cloud Build verifies fresh optimization, mid-epoch restoration of both optimizers,
+exact remaining step counts and a faithful CPU-only checkpoint export.

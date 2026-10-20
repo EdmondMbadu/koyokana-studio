@@ -151,10 +151,16 @@
         <button class="icon-btn" (click)="selected.set(null)" aria-label="Close"><app-icon name="x" /></button>
       </div>
       <div class="dialog-body stack">
+        @if (r.recoveryRunId) {
+          <p class="hp-read">This attempt has a recovery run. <a class="link" routerLink="/listen" [queryParams]="{ run: r.recoveryRunId }">Follow recovery →</a></p>
+        }
+        @if (r.recoveryOf) {
+          <p class="hp-read">Continues a verified saved checkpoint from an earlier attempt. The target step count includes the training already completed.</p>
+        }
         <div class="field">
           <div class="row" style="justify-content: space-between">
             <span class="label">Launch command</span>
-            <button class="btn btn-ghost btn-sm" (click)="copy(command(r))"><app-icon name="copy" [size]="13" /> Copy</button>
+            <button class="btn btn-ghost btn-sm" (click)="copy(command(r))" [disabled]="!!r.vertexJobId"><app-icon name="copy" [size]="13" /> {{ r.vertexJobId ? 'Already submitted' : 'Copy' }}</button>
           </div>
           <pre class="cmd mono">{{ command(r) }}</pre>
           <span class="hint">

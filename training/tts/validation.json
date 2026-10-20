@@ -1,33 +1,35 @@
 {
-  "observed_on": "2026-10-19",
+  "observed_on": "2026-10-20",
   "project": "koyokana-studio",
   "region": "us-central1",
-  "image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb",
-  "release_tag": "v1.0.1",
-  "successful_cloud_build": "bc3de251-1d7d-4e3e-803a-58d582c9845d",
+  "image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:d0d43f8dd12c43de3c900c402b42c34efcb418339a5c83d0f61fb8b1e46e6ea3",
+  "release_tag": "v1.1.0",
+  "successful_cloud_build": "58a5f4d3-72d1-4351-a64a-9127fe6a37bd",
   "build_verification": {
-    "python_tests_passed": 9,
-    "optimizer_steps": 2,
-    "generator_weights_changed": true,
-    "held_out_evaluation_ran": true,
-    "checkpoint_saved": true,
+    "python_tests_passed": 16,
+    "fresh_optimizer_steps": 2,
+    "resumed_optimizer_step": 4,
+    "both_optimizer_states_restored": true,
+    "cpu_checkpoint_export_verified": true,
     "model_reloaded": true,
-    "wav_files_exported": 23
+    "wav_files_exported": 69
   },
   "studio_verification": {
-    "angular_tests_passed": 24,
+    "angular_tests_passed": 31,
     "production_build_passed": true,
     "hosting_deployed": true,
     "served_index_and_configuration_bundles_match_build": true,
     "url": "https://koyokana-studio.web.app",
-    "image_digest": "sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb",
+    "image_digest": "sha256:d0d43f8dd12c43de3c900c402b42c34efcb418339a5c83d0f61fb8b1e46e6ea3",
     "manifest_authenticated_download_verified": true,
     "manifest_anonymous_access_denied": true,
     "manifest_authorization_preflight_verified": true,
     "manifest_bearer_token_created": false,
     "verified_bundles": 3,
     "rules_tests_passed": 24,
-    "listening_page_deployed": true
+    "listening_page_deployed": true,
+    "recovery_redirect_deployed": true,
+    "live_training_progress_deployed": true
   },
   "dataset": {
     "name": "tts-v1",
@@ -61,19 +63,25 @@
     "wav_files": 119,
     "checkpoint_files": 7,
     "finite_training_and_eval_metrics": true,
-    "trainer_identity_gcs_read_create_verified": true
+    "trainer_identity_gcs_read_create_verified": true,
+    "trainer_image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb"
   },
   "full_experiment": {
     "name": "tts-v1-r1",
     "registry_id": "157b3de4f137cb77eeb1",
-    "state": "running",
+    "state": "failed",
     "launched": true,
     "epochs": 100,
     "batch_size": 8,
     "timeout_seconds": 28800,
     "job": "projects/303635763719/locations/us-central1/customJobs/7882801358091321344",
     "verified_optimizer_step": 1500,
-    "checkpoint_1000_uploaded": true
+    "checkpoint_1000_uploaded": true,
+    "last_training_step": 8351,
+    "last_checkpoint_step": 8000,
+    "error": "CUDA illegal memory access during optimizer update; original checkpoint files preserved.",
+    "recovery_registry_id": "157b3de4f137cb77eeb1-recovery-1",
+    "trainer_image": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:af06e6b37b5259281bf4bf287a34315057239611d523ca7aa2971f89c7be3efb"
   },
   "data_preflight": {
     "job": "projects/303635763719/locations/us-central1/customJobs/2541743306262446080",
@@ -101,6 +109,115 @@
   },
   "all_verification_jobs_terminal": true,
   "deprecated_v1_tag_removed": true,
-  "completed_at_utc": "2026-10-19T22:09:35.298470+00:00",
-  "last_full_run_check_utc": "2026-10-20T00:51:12.578827+00:00"
+  "completed_at_utc": "2026-10-20T05:01:45.414736+00:00",
+  "last_full_run_check_utc": "2026-10-20T05:01:45.414736+00:00",
+  "recovery_experiment": {
+    "registry_id": "157b3de4f137cb77eeb1-recovery-1",
+    "job": "projects/303635763719/locations/us-central1/customJobs/4361514215068925952",
+    "state": "succeeded",
+    "source_checkpoint_step": 8000,
+    "target_step": 9600,
+    "checkpoint_interval": 200,
+    "timeout_seconds": 14400,
+    "restoration_verified": {
+      "generator_optimizer_states": 846,
+      "discriminator_optimizer_states": 111,
+      "both_optimizer_max_step": 8000,
+      "foreach": false
+    },
+    "output": "gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1-recovery-1/",
+    "training_complete": true,
+    "verified_optimizer_step": 9600,
+    "checkpoint_8200": {
+      "all_seven_state_files_present": true,
+      "completion_manifest_sha256_matches": true,
+      "total_state_bytes": 997450528
+    },
+    "held_out_evaluation_8500": {
+      "mel": 14.400957494974136,
+      "kl": 42.5787735581398,
+      "mel_kl": 56.97973093390465,
+      "finite": true
+    },
+    "last_checkpoint_step": 9600,
+    "started_at_utc": "2026-10-20T04:15:11Z",
+    "finished_at_utc": "2026-10-20T05:00:11Z",
+    "checkpoint_9600": {
+      "all_seven_state_files_present": true,
+      "completion_manifest_sha256_matches": true,
+      "total_state_bytes": 997450528
+    },
+    "training_validation": {
+      "optimizer_updates": 1600,
+      "first_step": 8001,
+      "last_step": 9600,
+      "cuda_retries_used": 0,
+      "finite_metrics": true,
+      "evaluation_steps": [
+        8500,
+        9000,
+        9500,
+        9600
+      ],
+      "mean_last_200_summed_training_losses": 11.712332882881164,
+      "final_evaluation": {
+        "step": 9600,
+        "attempt": 0,
+        "time": 1792472230.6832945,
+        "val_loss_mel": 13.837756007909775,
+        "val_loss_kl": 44.959680147469044,
+        "val_loss_mel_kl": 58.797435998916626
+      },
+      "inference_reload_missing_weights_warning": false
+    },
+    "model_validation": {
+      "tensor_count": 836,
+      "elements": 83015286,
+      "all_tensors_finite": true,
+      "sample_rate": 16000,
+      "vocabulary_size": 41,
+      "weight_bytes": 332163016,
+      "all_six_downloaded_file_hashes_match": true
+    },
+    "sample_validation": {
+      "all_trained_samples_differ_from_baseline": true,
+      "run_id": "157b3de4f137cb77eeb1-recovery-1",
+      "step": 9600,
+      "training_complete": true,
+      "prompts": {
+        "held-out": 33,
+        "unseen-phone": 10
+      },
+      "wav_files": 119,
+      "all_pcm16_mono_16000": true,
+      "all_non_silent": true,
+      "min_rms": 0.0483855791862893,
+      "max_rms": 0.14081372051011343,
+      "min_seconds": 1.84,
+      "max_seconds": 12.752,
+      "index_sha256": "2d9654a5ab0228d37ce5a293a750897a40c3597d5399462ccf6658826e37aebb"
+    },
+    "registry_finalized": {
+      "runId": "157b3de4f137cb77eeb1-recovery-1",
+      "status": "succeeded",
+      "commitTime": "2026-10-20T05:01:15.065151Z",
+      "verifiedWavCount": 119
+    },
+    "listen_url": "https://koyokana-studio.web.app/listen?run=157b3de4f137cb77eeb1",
+    "human_listening_scores_collected": false
+  },
+  "checkpoint_export_verification": {
+    "job": "projects/303635763719/locations/us-central1/customJobs/273793865788424192",
+    "state": "cancelled",
+    "checkpoint_step": 8000,
+    "optimizer_updates": 0,
+    "purpose": "Independent CPU-only validation of the real checkpoint. Not the complete 9600-step experiment.",
+    "reason": "Remained queued. Cancelled to prevent redundant compute after the recovery reached step 9600 and exported its model. The completed recovery itself reloaded the real trained model and generated all 86 synthetic WAVs on CPU; all 119 exports were independently validated."
+  },
+  "local_recovery_regression_tests": {
+    "tests_discovered": 17,
+    "passed": 16,
+    "skipped": 1,
+    "skip_reason": "Lightweight local environment lacks PyTorch; all 16 image tests including the optimizer test passed in Cloud Build. The additional local test exercises the pinned storage SDK HTTP 412 response mapping."
+  }
 }

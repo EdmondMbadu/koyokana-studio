@@ -16,7 +16,8 @@ torch.set_num_threads(4)
 with tempfile.TemporaryDirectory() as temp:
     root = Path(temp)
     records = []
-    for i, (split, text) in enumerate([('train', 'Mbote taxi.'), ('eval', 'Matondi mingi.')]):
+    for i, (split, text) in enumerate([('train', 'Mbote taxi.'), ('train', 'Nazali malamu.'),
+                                     ('train', 'Tokomonana lobi.'), ('eval', 'Matondi mingi.')]):
         path = root / 'fixtures' / 'recordings' / f'clip{i}.wav'
         path.parent.mkdir(parents=True, exist_ok=True)
         time = np.arange(48000 * 2) / 48000
@@ -47,5 +48,37 @@ with tempfile.TemporaryDirectory() as temp:
             after = trained.get_tensor(key)
             assert not torch.equal(before, after[:len(before)]), 'Generator never updated'
             assert after.shape[0] == 41, 'Extended vocabulary was not saved'
-    print('SMOKE TEST PASSED: two optimizer steps changed generator weights, eval ran, model reloaded, 23 WAVs exported.')
+    # Restore both GAN optimizers from a mid-epoch checkpoint. Only steps 3 and
+    # 4 may run, and the exact final step must be four (no accidental epoch replay).
+    resumed = parser().parse_args([
+        '--manifest=' + str(manifest), '--output=' + str(root / 'resumed-result'),
+        '--work-dir=' + str(root / 'resumed-work'), '--local-audio-root=' + str(root / 'fixtures'),
+        '--run-id=resumed', '--epochs=2', '--batch-size=1', '--max-steps=4', '--save-steps=1',
+        '--resume-from=' + str(root / 'result' / 'checkpoints' / 'checkpoint-2'), '--allow-cpu'])
+    # Local runs also preserve their optimizer checkpoints as immutable artifacts.
+    from storage_io import Store
+    Store().upload_tree(root / 'work' / 'model' / 'checkpoint-2',
+                        str(root / 'result' / 'checkpoints' / 'checkpoint-2'))
+    run(resumed)
+    report = json.loads((root / 'resumed-result' / 'succeeded.json').read_text())
+    assert report['last_training_step'] == 4 and report['training_complete'], report
+    audit = json.loads((root / 'resumed-work' / 'resume-loaded-0.json').read_text())
+    assert audit['restored_step'] == 2 and len(audit['optimizers']) == 2, audit
+    history = [json.loads(line) for line in (root / 'resumed-result' / 'metrics.jsonl').read_text().splitlines()]
+    assert [m['step'] for m in history if 'train_summed_losses' in m] == [3, 4], history
+    # Even if optimization cannot continue, a verified checkpoint must be
+    # exportable on CPU without silently replacing it with the base model.
+    exported = parser().parse_args([
+        '--manifest=' + str(manifest), '--output=' + str(root / 'exported-result'),
+        '--work-dir=' + str(root / 'exported-work'), '--local-audio-root=' + str(root / 'fixtures'),
+        '--run-id=exported', '--epochs=2', '--batch-size=1', '--max-steps=4',
+        '--resume-from=' + str(root / 'result' / 'checkpoints' / 'checkpoint-2'),
+        '--export-only', '--allow-cpu'])
+    run(exported)
+    export_report = json.loads((root / 'exported-result' / 'succeeded.json').read_text())
+    assert export_report['last_training_step'] == 2 and not export_report['training_complete'], export_report
+    with safe_open(str(root / 'exported-result' / 'model' / 'model.safetensors'), framework='pt') as recovered:
+        with safe_open(str(root / 'work' / 'model' / 'checkpoint-2' / 'model.safetensors'), framework='pt') as saved:
+            assert torch.equal(recovered.get_tensor(key), saved.get_tensor(key)), 'Export lost trained embeddings'
+    print('SMOKE TEST PASSED: fresh training, exact mid-epoch resume, optimizer restoration, CPU checkpoint export and 69 WAVs.')
 

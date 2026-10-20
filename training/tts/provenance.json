@@ -7,6 +7,6 @@
   "discriminator_revision": "44cc7fb408064ef9ea6e7c59130d88cac1274671",
   "discriminator_file": "full_models/eng/D_100000.pth",
   "vocabulary_extension": ["x"],
-  "local_trainer_fixes": ["optional single-speaker batch ID", "explicit train/eval mode", "clear discriminator gradients after generator update"],
+  "local_trainer_fixes": ["optional single-speaker batch ID", "explicit train/eval mode", "clear discriminator gradients after generator update", "verified optimizer/RNG checkpoint restore", "mid-epoch resume offsets and scheduler continuity", "non-foreach AdamW with finite-gradient checks", "immutable checkpoint commit markers and identical-upload retry verification", "bounded fresh CUDA process recovery", "CPU sample export after durable model upload"],
   "notes": "Meta does not publish mms-tts-lin. The generator is UBC's Lingala adaptation. Its release contains inference weights only; training uses Meta's architecture-compatible English discriminator. The comparison voice is the unmodified UBC checkpoint, not a claimed Meta Lingala voice. Meta's discriminator is CC-BY-NC-4.0; treat resulting research artifacts as noncommercial."
 }

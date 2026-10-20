@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import {
   collection,
   deleteDoc,
@@ -61,7 +62,7 @@ export const RUN_STATUSES: { value: RunStatus; label: string; cls: string }[] = 
 
 @Component({
   selector: 'app-training',
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, Icon, RouterLink],
   templateUrl: './training.html',
   styleUrl: './training.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -189,6 +190,7 @@ export class Training {
         baseModel: this.baseModel(),
         trainerImage: trainingImage(d.task, environment.gcp),
         timeoutSeconds: this.runtimeHours() * 3600,
+        ...(d.task === 'tts' ? { targetSteps: Math.ceil(d.trainCount / this.batchSize()) * this.epochs() } : {}),
         machine: machine.id,
         hyperparams: {
           epochs: Number(this.epochs()) || 1,

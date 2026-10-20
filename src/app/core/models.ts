@@ -138,6 +138,12 @@ export interface TrainingRun {
   baseModel: string;
   trainerImage?: string;
   timeoutSeconds?: number;
+  resumeFrom?: string;
+  checkpointEverySteps?: number;
+  targetSteps?: number;
+  recoveryOf?: string;
+  recoveryRunId?: string;
+  failureReason?: string;
   machine: string;
   hyperparams: { epochs: number; learningRate: number; batchSize: number };
   gitCommit: string;

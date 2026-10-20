@@ -55,3 +55,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 koyokana-run-*.json
+
+# Private voice weights are baked into the private inference image, never Git.
+/serving/tts/model/

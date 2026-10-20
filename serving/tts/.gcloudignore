@@ -1,0 +1,5 @@
+.gcloudignore
+__pycache__/
+*.pyc
+validation.json
+*-build.json

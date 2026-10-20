@@ -1,0 +1,51 @@
+{
+  "createTime": "2026-10-20T04:12:26.970582Z",
+  "displayName": "tts-v1-r1-checkpoint8000-verify",
+  "endTime": "2026-10-20T04:58:07.180694Z",
+  "error": {
+    "code": 1,
+    "message": "CANCELED"
+  },
+  "jobSpec": {
+    "scheduling": {
+      "timeout": "3600s"
+    },
+    "serviceAccount": "tts-trainer@koyokana-studio.iam.gserviceaccount.com",
+    "workerPoolSpecs": [
+      {
+        "containerSpec": {
+          "args": [
+            "--manifest=gs://koyokana-studio.firebasestorage.app/datasets/tts-v1/manifest.jsonl",
+            "--base-model=UBC-NLP/Simba-TTS-lin",
+            "--epochs=100",
+            "--learning-rate=0.00002",
+            "--batch-size=8",
+            "--max-steps=9600",
+            "--save-steps=200",
+            "--resume-from=gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1/checkpoints/checkpoint-8000",
+            "--sample-device=cpu",
+            "--export-only",
+            "--output=gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1-checkpoint8000-verify/",
+            "--run-id=157b3de4f137cb77eeb1-checkpoint8000-verify"
+          ],
+          "imageUri": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:d0d43f8dd12c43de3c900c402b42c34efcb418339a5c83d0f61fb8b1e46e6ea3"
+        },
+        "diskSpec": {
+          "bootDiskSizeGb": 100,
+          "bootDiskType": "pd-ssd"
+        },
+        "machineSpec": {
+          "machineType": "n2-standard-8"
+        },
+        "replicaCount": "1"
+      }
+    ]
+  },
+  "labels": {
+    "koyokana-recovery-verification": "true"
+  },
+  "name": "projects/303635763719/locations/us-central1/customJobs/273793865788424192",
+  "startTime": "2026-10-20T04:12:27.115770Z",
+  "state": "JOB_STATE_CANCELLED",
+  "updateTime": "2026-10-20T04:58:07.180694Z"
+}

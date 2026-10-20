@@ -8,13 +8,18 @@ import json
 import math
 import os
 import sys
+import time
 from pathlib import Path
 
 from accelerate import Accelerator
 from datasets import load_from_disk
-from storage_io import Store
+from storage_io import Store, file_sha256
+from recovery import CHECKPOINT_FILES
+from safe_optimizer import SafeAdamW
 import run_vits_finetuning as trainer
 import torch
+
+torch.optim.AdamW = SafeAdamW
 
 config_path = Path(sys.argv[1])
 config = json.loads(config_path.read_text())
@@ -41,27 +46,68 @@ def forward(self, *args, **kwargs):
 trainer.VitsModelForPreTraining.forward = forward
 original_log = Accelerator.log
 original_save = Accelerator.save_state
+original_load = Accelerator.load_state
 metrics_path = Path(config['output_dir']).parent / 'metrics.jsonl'
+attempt = int(os.environ.get('TTS_ATTEMPT', '0'))
+remote = os.environ.get('TTS_REMOTE_OUTPUT', '').rstrip('/')
 
 
 def log(self, values, step=None, **kwargs):
     values = {key: float(value) for key, value in values.items()}
     if not all(math.isfinite(v) for v in values.values()):
         raise FloatingPointError(f'Nonfinite loss at step {step}')
+    record = {'step': step, 'attempt': attempt, 'time': time.time(), **values}
     with metrics_path.open('a') as f:
-        f.write(json.dumps({'step': step, **values}) + '\n')
+        f.write(json.dumps(record) + '\n')
+    if self.is_main_process and remote and (step % 50 == 0 or 'val_loss_mel' in values):
+        kind = 'eval' if 'val_loss_mel' in values else 'train'
+        path = metrics_path.parent / f'metric-{attempt}-{step}-{kind}.json'
+        path.write_text(json.dumps(record) + '\n')
+        try:
+            Store().upload(path, f'{remote}/metrics/attempt-{attempt}/step-{step:08d}-{kind}.json', allow_identical=True)
+        except Exception as error:
+            print(f'WARNING: live metric upload failed; local metrics retained: {error}', flush=True)
     return original_log(self, values, step=step, **kwargs)
 
 
 def save(self, output_dir=None, **kwargs):
     result = original_save(self, output_dir=output_dir, **kwargs)
-    if self.is_main_process and os.environ.get('TTS_REMOTE_OUTPUT'):
-        target = os.environ['TTS_REMOTE_OUTPUT'].rstrip('/')
-        Store().upload_tree(output_dir, target + '/checkpoints/' + Path(output_dir).name)
+    if self.is_main_process:
+        path = Path(output_dir)
+        hashes = {name: file_sha256(path / name) for name in CHECKPOINT_FILES}
+        marker = {'step': int(path.name.split('-')[1]), 'files': hashes}
+        target = f'{remote}/checkpoints/attempt-{attempt}/{path.name}'
+        if remote:
+            Store().upload_tree(path, target, allow_identical=True)
+        (path / 'complete.json').write_text(json.dumps(marker, sort_keys=True) + '\n')
+        if remote:
+            Store().upload(path / 'complete.json', target + '/complete.json', allow_identical=True)
+    return result
+
+
+def load(self, input_dir=None, **kwargs):
+    result = original_load(self, input_dir=input_dir, **kwargs)
+    expected = int(Path(input_dir).name.split('-')[1])
+    optimizers = []
+    for wrapped in self._optimizers:
+        optimizer = getattr(wrapped, 'optimizer', wrapped)
+        counters = [int(state['step'].item()) for state in optimizer.state.values() if 'step' in state]
+        if not counters or max(counters) != expected or any(g.get('foreach') is not False for g in optimizer.param_groups):
+            raise RuntimeError('Optimizer state or conservative CUDA settings were not restored')
+        optimizers.append({'states': len(counters), 'min_step': min(counters), 'max_step': max(counters), 'foreach': False})
+    if len(optimizers) != 2:
+        raise RuntimeError('Both generator and discriminator optimizers must be restored')
+    report = {'restored_step': expected, 'attempt': attempt, 'optimizers': optimizers}
+    path = metrics_path.parent / f'resume-loaded-{attempt}.json'
+    path.write_text(json.dumps(report, indent=2) + '\n')
+    if remote:
+        Store().upload(path, remote + '/' + path.name, allow_identical=True)
+    print('VERIFIED CHECKPOINT RESTORE: ' + json.dumps(report), flush=True)
     return result
 
 
 Accelerator.log = log
 Accelerator.save_state = save
+Accelerator.load_state = load
 trainer.main()
 

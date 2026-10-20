@@ -11,7 +11,7 @@ interface CloudTraining {
 
 export function trainingImage(task: TrainingRun['task'], cloud: CloudTraining): string {
   const { projectId, region, artifactRepo, ttsImageDigest } = cloud;
-  const suffix = task === 'tts' ? (ttsImageDigest ? `@${ttsImageDigest}` : ':v1.0.1') : ':latest';
+  const suffix = task === 'tts' ? (ttsImageDigest ? `@${ttsImageDigest}` : ':v1.1.0') : ':latest';
   return `${region}-docker.pkg.dev/${projectId}/${artifactRepo}/${task}-train${suffix}`;
 }
 
@@ -37,6 +37,9 @@ export function trainingCommand(
           `--manifest=${run.manifestUri}`, `--base-model=${run.baseModel}`,
           `--epochs=${run.hyperparams.epochs}`, `--learning-rate=${run.hyperparams.learningRate}`,
           `--batch-size=${run.hyperparams.batchSize}`, `--output=${run.outputUri}`, `--run-id=${run.id}`,
+          ...(run.resumeFrom ? [`--resume-from=${run.resumeFrom}`] : []),
+          ...(run.checkpointEverySteps ? [`--save-steps=${run.checkpointEverySteps}`] : []),
+          ...(run.targetSteps ? [`--max-steps=${run.targetSteps}`] : []),
         ],
       },
     }],

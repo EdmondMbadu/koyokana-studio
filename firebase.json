@@ -19,7 +19,10 @@
     "site": "koyokana-studio",
     "public": "dist/koyokana-studio/browser",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "rewrites": [
+      { "source": "/api/voice/**", "run": { "serviceId": "tts-serve", "region": "us-central1", "pinTag": true } },
+      { "source": "**", "destination": "/index.html" }
+    ],
     "headers": [
       {
         "source": "/favicon.@(ico|svg)",
