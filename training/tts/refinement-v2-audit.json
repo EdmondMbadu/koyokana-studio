@@ -1,0 +1,133 @@
+{
+  "validation_clips": 33,
+  "reduction": "mean_per_clip",
+  "source_sha256": {
+    "koyokana-r1-original-metrics.jsonl": "f70e4c6a8f33aa43ce101ccd0a258e2b536e9d51f4ab81e37fcc9d1498229c72",
+    "metrics.jsonl": "4c4f22214b411d237f8239eb1d983b1f332e6bc59f7e37e5566d77f48fd00de0"
+  },
+  "evaluations": [
+    {
+      "step": 500,
+      "val_loss_mel": 0.46750978267554083,
+      "val_loss_kl": 1.6771034492236194,
+      "val_loss_mel_kl": 2.1446132479291973
+    },
+    {
+      "step": 1000,
+      "val_loss_mel": 0.4589841835426562,
+      "val_loss_kl": 1.6850531218629894,
+      "val_loss_mel_kl": 2.144037300890142
+    },
+    {
+      "step": 1500,
+      "val_loss_mel": 0.445846362547441,
+      "val_loss_kl": 1.672797576044545,
+      "val_loss_mel_kl": 2.1186439539446975
+    },
+    {
+      "step": 2000,
+      "val_loss_mel": 0.4575600904045683,
+      "val_loss_kl": 1.5097703382824406,
+      "val_loss_mel_kl": 1.9673304268808076
+    },
+    {
+      "step": 2500,
+      "val_loss_mel": 0.4604223813071395,
+      "val_loss_kl": 1.3871425381212523,
+      "val_loss_mel_kl": 1.8475649158159893
+    },
+    {
+      "step": 3000,
+      "val_loss_mel": 0.4472302794456482,
+      "val_loss_kl": 1.4394400146874515,
+      "val_loss_mel_kl": 1.8866702841989922
+    },
+    {
+      "step": 3500,
+      "val_loss_mel": 0.4431960212461876,
+      "val_loss_kl": 1.2490299987522038,
+      "val_loss_mel_kl": 1.6922260224819183
+    },
+    {
+      "step": 4000,
+      "val_loss_mel": 0.4378371952158032,
+      "val_loss_kl": 1.5412778466036825,
+      "val_loss_mel_kl": 1.9791150336915797
+    },
+    {
+      "step": 4500,
+      "val_loss_mel": 0.43709286234595557,
+      "val_loss_kl": 1.4402506360501954,
+      "val_loss_mel_kl": 1.877343503814755
+    },
+    {
+      "step": 5000,
+      "val_loss_mel": 0.42817110816637677,
+      "val_loss_kl": 1.2584326328201727,
+      "val_loss_mel_kl": 1.686603745727828
+    },
+    {
+      "step": 5500,
+      "val_loss_mel": 0.442896048227946,
+      "val_loss_kl": 1.113826054966811,
+      "val_loss_mel_kl": 1.5567221081618108
+    },
+    {
+      "step": 6000,
+      "val_loss_mel": 0.4360987607276801,
+      "val_loss_kl": 1.4807418241645351,
+      "val_loss_mel_kl": 1.9168405894077185
+    },
+    {
+      "step": 6500,
+      "val_loss_mel": 0.43571052768013696,
+      "val_loss_kl": 1.242542051004641,
+      "val_loss_mel_kl": 1.678252586812684
+    },
+    {
+      "step": 7000,
+      "val_loss_mel": 0.43242229295499396,
+      "val_loss_kl": 1.4141775893442559,
+      "val_loss_mel_kl": 1.8465998606248335
+    },
+    {
+      "step": 7500,
+      "val_loss_mel": 0.44434772296385333,
+      "val_loss_kl": 1.239303126818303,
+      "val_loss_mel_kl": 1.6836508638931043
+    },
+    {
+      "step": 8000,
+      "val_loss_mel": 0.447026842471325,
+      "val_loss_kl": 1.4218875187816042,
+      "val_loss_mel_kl": 1.8689143531250232
+    },
+    {
+      "step": 8500,
+      "val_loss_mel": 0.4363926513628526,
+      "val_loss_kl": 1.2902658653981758,
+      "val_loss_mel_kl": 1.7266585131486256
+    },
+    {
+      "step": 9000,
+      "val_loss_mel": 0.4454750698624235,
+      "val_loss_kl": 1.2800935980807426,
+      "val_loss_mel_kl": 1.7255686539592165
+    },
+    {
+      "step": 9500,
+      "val_loss_mel": 0.44070972276456427,
+      "val_loss_kl": 1.3777219318982326,
+      "val_loss_mel_kl": 1.8184316483410923
+    },
+    {
+      "step": 9600,
+      "val_loss_mel": 0.4193259396336295,
+      "val_loss_kl": 1.3624145499233045,
+      "val_loss_mel_kl": 1.7817404848156553
+    }
+  ],
+  "lowest_mel_step": 9600,
+  "lowest_mel_kl_step": 5500,
+  "conclusion": "Losses do not establish naturalness or an optimal listening checkpoint; human comparison is required."
+}

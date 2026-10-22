@@ -1,5 +1,60 @@
 # First Lingala voice test
 
+## Refinement v2: existing recordings only
+
+The first listening result was unnatural. Execution checks are not a perceptual
+quality pass. Keep `tts-v1` and its 33 held-out sentences unchanged. The v2 plan is:
+
+1. Compare the 9,600-step export at original, steady and gentle delivery settings.
+   The latter two use lower stochastic variation and synthesize punctuation-bound
+   phrases with explicit 120 ms / 260 ms gaps. The tokenizer has no punctuation
+   token; extra spaces are not a learned pause. This adds phrasing, not question
+   intonation or learned conversational prosody.
+2. Compare the original run's 2k, 4k, 6k and 8k checkpoints using the same text and
+   original delivery. Only change one comparison dimension at a time. The private
+   `serving/tts/compare.py` grid uses ten held-out sentences, seed 456 and checks
+   all 70 WAVs. Human listening remains the selection criterion.
+3. The selected dialect experiment uses `--adaptation=pronunciation` and
+   `--initial-model=first-voice`: initialize from the verified first trained voice,
+   batch 8, LR 0.000005, max 1,000 additional steps, and checkpoint/listening
+   previews every 250 steps. Text encoder, duration predictor and flow learn from
+   the existing speaker's audio. Decoder and posterior encoder remain frozen;
+   every checkpoint verifies their fingerprint. Six initialization files are
+   pinned by SHA256 in `voice-source.json`; the manifest, raw recording hashes,
+   normalized transcripts and splits must match the first run exactly. The goal
+   is a controlled Kinshasa-pronunciation trial, not a guaranteed dialect fix.
+   The separate `voice` mode freezes pronunciation/timing and remains available
+   for timbre experiments. It is not selected for correcting an unwanted accent.
+4. Keep the old model available. Promote a new checkpoint only after comparing
+   intelligibility, naturalness and speaker resemblance on held-out/unseen text.
+   Do not select it solely by mel/KL loss or claim a quality improvement from a
+   non-silent waveform, pitch statistic, spectrogram or lack of crashes.
+
+`refinement-v2-audit.json` reconstructs the full first-run curve. The upstream
+trainer **sums** losses over 33 held-out clips. Historical mel 13.84 and KL 44.96
+are therefore approximately 0.419 and 1.362 per clip, respectively. The final
+checkpoint has the lowest observed mel loss; step 5,500 has the lowest combined
+mel/KL loss. Neither establishes the best sounding voice or proves over-training.
+The revised logger marks metric version 2 and reports per-clip means. V1 resume
+keeps its full-training optimizer topology; changing adaptation mode or initial
+model on resume is rejected. A new experiment uses fresh optimizers and its own
+output prefix. Warm initialization is not described as optimizer recovery.
+
+```sh
+python training/tts/analyze_run.py --metrics metrics-1.jsonl --metrics metrics-2.jsonl \
+  --clips 33 --output audit.json
+python serving/tts/package_candidates.py --checkpoints /private/path/to/checkpoints
+python serving/tts/compare.py --index /private/path/to/samples/index.json \
+  --output /private/path/to/new-comparison
+```
+
+No new recording or new script is required for these experiments. More data,
+different spelling representations or another base model remain later decisions.
+16 kHz limits bandwidth; it does not, by itself, impose robotic prosody or prove
+that natural speech is impossible. Reference settings: [VITS inference
+controls](https://huggingface.co/docs/transformers/model_doc/vits) and the pinned
+[upstream recipe](https://github.com/ylacombe/finetune-hf-vits/tree/6f3f51f4d667f5c3eef89484d151ffd39d2c2b89).
+
 This is the `tts-train` image consumed by Studio's **Training → Plan run** command.
 It runs one worker with one GPU, reads the frozen Studio JSONL manifest, and writes
 private results under `gs://koyokana-studio.firebasestorage.app/runs/<run-id>/`.

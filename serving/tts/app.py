@@ -8,6 +8,7 @@ from werkzeug.exceptions import HTTPException
 
 from access import AccessError
 from text import speech_text
+from delivery import delivery_plan, MODEL_IDS
 
 
 def create_app(engine=None, access=None):
@@ -35,11 +36,14 @@ def create_app(engine=None, access=None):
     def synthesize():
         uid = access.authorize(request.headers.get('Authorization', ''))
         body = request.get_json(silent=True)
-        if not isinstance(body, dict) or set(body) != {'text'}:
+        if not isinstance(body, dict) or 'text' not in body or set(body) - {'text', 'profile', 'model'}:
             raise ValueError('Send a Lingala passage in the text field.')
-        text = speech_text(body['text'], engine.vocab)
+        profile, model_id = body.get('profile', 'original'), body.get('model', 'final')
+        if not isinstance(model_id, str) or model_id not in MODEL_IDS:
+            raise ValueError('Choose one of the available voice checkpoints.')
+        text, segments = delivery_plan(body['text'], engine.vocab, profile)
         access.reserve(uid)
-        result = engine.speak(text)
+        result = engine.speak(text, profile=profile, model_id=model_id, segments=segments)
         response = Response(result['wav'], mimetype='audio/wav')
         response.headers.update({
             'Content-Disposition': 'inline; filename="edmond-lingala.wav"',
@@ -48,6 +52,9 @@ def create_app(engine=None, access=None):
             'X-Voice-Generation-Ms': str(result['generation_ms']),
             'X-Voice-Duration': str(result['duration']),
             'X-Voice-Cached': str(result['cached']).lower(),
+            'X-Voice-Version': '2', 'X-Voice-Profile': profile, 'X-Voice-Model': model_id,
+            'X-Voice-Source-Run': result.get('source_run_id', engine.provenance['run_id']),
+            'X-Voice-Training-Step': str(result.get('training_step', 0)),
             'X-Request-Id': uuid.uuid4().hex,
         })
         return response

@@ -28,6 +28,8 @@ describe('voice playground interactions', () => {
     const fetch = spyOn(window, 'fetch').and.resolveTo(new Response(bytes, { headers: {
       'Content-Type': 'audio/wav', 'X-Voice-Run': VOICE_RUN, 'X-Voice-Text': 'mbote',
       'X-Voice-Generation-Ms': '100', 'X-Voice-Duration': '1',
+      'X-Voice-Version': '2', 'X-Voice-Model': 'final', 'X-Voice-Profile': 'gentle',
+      'X-Voice-Source-Run': VOICE_RUN, 'X-Voice-Training-Step': '9600',
     } }));
     const fixture = TestBed.createComponent(Voice); fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
@@ -38,6 +40,7 @@ describe('voice playground interactions', () => {
     expect(token).toHaveBeenCalledWith(false);
     const options = fetch.calls.mostRecent().args[1] as RequestInit;
     expect((options.headers as Record<string, string>)['Authorization']).toBe('Bearer test-token');
+    expect(JSON.parse(options.body as string)).toEqual({ text: 'Mbote!', profile: 'gentle', model: 'final' });
     expect(fixture.nativeElement.querySelector('audio')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('a[download]')).not.toBeNull();
     input.value = 'matondi'; input.dispatchEvent(new Event('input')); fixture.detectChanges();

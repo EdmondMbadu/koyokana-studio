@@ -37,7 +37,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(r.headers['Cache-Control'], 'private, no-store')
         self.access.authorize.assert_called_once_with('Bearer user-token')
         self.access.reserve.assert_called_once_with('studio-admin')
-        self.engine.speak.assert_called_once_with('mbote')
+        self.engine.speak.assert_called_once_with('mbote', profile='original', model_id='final', segments=[('mbote', 0)])
         with wave.open(io.BytesIO(r.data)) as f:
             self.assertEqual(f.getframerate(), 16000)
 
@@ -67,6 +67,16 @@ class ServiceTests(unittest.TestCase):
         r = self.client.post('/api/voice/synthesize', json={'text': 'mbote'})
         self.assertEqual(r.status_code, 503)
         self.assertNotIn(b'secret', r.data)
+
+    def test_delivery_and_checkpoint_are_bounded_and_returned_for_comparison(self):
+        r = self.client.post('/api/voice/synthesize', json={'text': 'Mbote, matondi.', 'profile': 'steady', 'model': 'step-2000'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['X-Voice-Model'], 'step-2000')
+        self.assertEqual(r.headers['X-Voice-Profile'], 'steady')
+        self.engine.speak.assert_called_once_with('mbote matondi', profile='steady', model_id='step-2000',
+                                                 segments=[('mbote', .12), ('matondi', 0)])
+        for extra in [{'profile': {}}, {'profile': 'unknown'}, {'model': []}, {'model': '../../model'}]:
+            self.assertEqual(self.client.post('/api/voice/synthesize', json={'text': 'mbote', **extra}).status_code, 400)
 
 
 if __name__ == '__main__':

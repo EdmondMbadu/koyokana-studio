@@ -1,0 +1,52 @@
+{
+  "verified_at_utc": "2026-10-22T05:14:57.230255+00:00",
+  "status": "delivery_live_pronunciation_experiment_submitted",
+  "human_naturalness_and_dialect_evaluation": "pending",
+  "selected_goal": "Kinshasa Lingala pronunciation",
+  "source_dataset": "tts-v1",
+  "new_recordings": 0,
+  "source_model": "157b3de4f137cb77eeb1-recovery-1, step 9600",
+  "serving": {
+    "version": "v1.1.2",
+    "build": "60c1c633-31c4-44a8-91a2-8f7d02ed4ef3",
+    "image_digest": "sha256:ee87001492db9c7c880bf25aab09df86efb464862d1590617560ac905db71c52",
+    "revision": "tts-serve-00004-4x6",
+    "default_profile": "gentle",
+    "runtime_attributes_verified": true,
+    "model_and_profile_cache_isolation_verified": true,
+    "public_unauthenticated_status": 401,
+    "browser_gentle": {
+      "duration_seconds": 4.6,
+      "generation_seconds": 5.5,
+      "playback_ended": true,
+      "playback_error": null
+    }
+  },
+  "tests": {
+    "angular_browser": 40,
+    "training_unit": 21,
+    "serving_unit": 14,
+    "configuration": 3,
+    "real_fresh_training_resume_export_and_both_adaptation_modes": "passed",
+    "real_inference_all_five_checkpoints": "passed",
+    "comparison_wavs": 70,
+    "prompts_with_three_distinct_delivery_outputs": 10
+  },
+  "training": {
+    "run_id": "tts-v2-kinshasa-r1",
+    "job": "projects/303635763719/locations/us-central1/customJobs/2987444638232608768",
+    "state_last_checked": "JOB_STATE_PENDING",
+    "build": "6d73a195-e07d-498a-b0b5-1a7263573ccf",
+    "image_digest": "sha256:e131d5bd03109df60dc196533d714d08b0ca7d5d5d1f94529fee9bca0b22a144",
+    "initial_model": "first-voice",
+    "adaptation": "pronunciation",
+    "additional_steps": 1000,
+    "learning_rate": 5e-06,
+    "checkpoint_steps": 250,
+    "timeout_seconds": 5400,
+    "automatic_quality_promotion": false
+  },
+  "comparison_index_sha256": "00bcef309168e092a0736cc44e71ef0a067e0dd1ad579b7670f42d8a2df10559",
+  "new_model_integration": "Staged; do not deploy the additional model choice until the completed export and real inference pass verification.",
+  "blocked_on": "Vertex GPU allocation and completion of the queued experiment"
+}

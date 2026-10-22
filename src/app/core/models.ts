@@ -141,6 +141,8 @@ export interface TrainingRun {
   resumeFrom?: string;
   checkpointEverySteps?: number;
   targetSteps?: number;
+  adaptation?: 'full' | 'voice' | 'pronunciation';
+  initialModel?: 'base' | 'first-voice';
   recoveryOf?: string;
   recoveryRunId?: string;
   failureReason?: string;

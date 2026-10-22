@@ -81,4 +81,31 @@ with tempfile.TemporaryDirectory() as temp:
         with safe_open(str(root / 'work' / 'model' / 'checkpoint-2' / 'model.safetensors'), framework='pt') as saved:
             assert torch.equal(recovered.get_tensor(key), saved.get_tensor(key)), 'Export lost trained embeddings'
     print('SMOKE TEST PASSED: fresh training, exact mid-epoch resume, optimizer restoration, CPU checkpoint export and 69 WAVs.')
+    voice = parser().parse_args([
+        '--manifest=' + str(manifest), '--output=' + str(root / 'voice-result'),
+        '--work-dir=' + str(root / 'voice-work'), '--local-audio-root=' + str(root / 'fixtures'),
+        '--run-id=voice-smoke', '--epochs=2', '--batch-size=1', '--max-steps=2',
+        '--save-steps=1', '--adaptation=voice', '--allow-cpu'])
+    run(voice)
+    audit = json.loads((root / 'voice-result' / 'adaptation-validation.json').read_text())
+    assert audit['frozen_weights_unchanged'], audit
+    with safe_open('/opt/models/train/model.safetensors', framework='pt') as original:
+        with safe_open(str(root / 'voice-result' / 'model' / 'model.safetensors'), framework='pt') as adapted:
+            assert torch.equal(original.get_tensor(key)[:40], adapted.get_tensor(key)[:40])
+            assert not torch.equal(original.get_tensor('decoder.conv_pre.weight'), adapted.get_tensor('decoder.conv_pre.weight'))
+    assert len(list((root / 'voice-work' / 'previews').rglob('*.wav'))) == 2
+    print('VOICE ADAPTATION SMOKE PASSED: real GAN updates, frozen text/timing, CPU checkpoint previews and final export.')
+    pronunciation = parser().parse_args([
+        '--manifest=' + str(manifest), '--output=' + str(root / 'pronunciation-result'),
+        '--work-dir=' + str(root / 'pronunciation-work'), '--local-audio-root=' + str(root / 'fixtures'),
+        '--run-id=pronunciation-smoke', '--epochs=2', '--batch-size=1', '--max-steps=2',
+        '--save-steps=1', '--adaptation=pronunciation', '--allow-cpu'])
+    run(pronunciation)
+    audit = json.loads((root / 'pronunciation-result' / 'adaptation-validation.json').read_text())
+    assert audit['frozen_weights_unchanged'] and audit['mode'] == 'pronunciation', audit
+    with safe_open('/opt/models/train/model.safetensors', framework='pt') as original:
+        with safe_open(str(root / 'pronunciation-result' / 'model' / 'model.safetensors'), framework='pt') as adapted:
+            assert torch.equal(original.get_tensor('decoder.conv_pre.weight'), adapted.get_tensor('decoder.conv_pre.weight'))
+            assert not torch.equal(original.get_tensor(key), adapted.get_tensor(key))
+    print('PRONUNCIATION ADAPTATION SMOKE PASSED: frozen decoder, trainable text/timing, two actual updates and final WAV export.')
 

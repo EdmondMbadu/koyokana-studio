@@ -37,6 +37,8 @@ def parser():
     p.add_argument('--batch-size', type=int, default=8)
     p.add_argument('--max-steps', type=int, default=-1)
     p.add_argument('--save-steps', type=int, default=1000)
+    p.add_argument('--adaptation', choices=['full', 'voice', 'pronunciation'], default='full')
+    p.add_argument('--initial-model', choices=['base', 'first-voice'], default='base')
     p.add_argument('--resume-from', help='Verified checkpoint URI from a previous run')
     p.add_argument('--export-only', action='store_true', help='Export a saved checkpoint without more optimization')
     p.add_argument('--cuda-retries', type=int, default=1, help='Bounded fresh-process retry after a CUDA illegal access')
@@ -137,7 +139,7 @@ def prepare(args, store, work):
 def training_config(args, work):
     return {
         'project_name': 'koyokana-' + args.run_id,
-        'model_name_or_path': '/opt/models/train',
+        'model_name_or_path': getattr(args, '_initial_model_path', '/opt/models/train'),
         'dataset_name': str(work / 'dataset'), 'train_split_name': 'train', 'eval_split_name': 'eval',
         'audio_column_name': 'audio', 'text_column_name': 'text',
         'output_dir': str(work / 'model'), 'overwrite_output_dir': False,
@@ -224,7 +226,8 @@ def run(args):
     provenance = json.loads((ROOT / 'provenance.json').read_text())
     source_hashes = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in (
         'train.py', 'data.py', 'storage_io.py', 'launch_vits.py', 'bootstrap.py', 'patch_vits.py',
-        'requirements.txt', 'provenance.json', 'phone-phrases.json', 'recovery.py', 'safe_optimizer.py')}
+        'requirements.txt', 'provenance.json', 'phone-phrases.json', 'recovery.py', 'safe_optimizer.py', 'adaptation.py',
+        'warm_start.py', 'voice-source.json', 'checkpoint_preview.py')}
     write_json(work / 'run.json', {'schema_version': 1, 'arguments': vars(args),
         'provenance': provenance, 'started_at': time.time(),
         'source_sha256': source_hashes, 'python_version': sys.version, 'torch_version': torch.__version__,
@@ -239,6 +242,10 @@ def run(args):
             write_json(work / 'prepared.json', {'status': 'prepared', 'training_started': False})
             store.upload(work / 'prepared.json', args.output.rstrip('/') + '/prepared.json')
             return
+        if args.initial_model == 'first-voice':
+            from warm_start import prepare_first_voice
+            args._initial_model_path = prepare_first_voice(store, work)
+            store.upload(work / 'initial-model-source.json', args.output.rstrip('/') + '/initial-model-source.json')
         resumed = None
         if args.resume_from:
             resumed = restore_checkpoint(args, store, work, rows)
@@ -251,6 +258,7 @@ def run(args):
         env = dict(os.environ, ACCELERATE_MIXED_PRECISION='no',
                    ACCELERATE_USE_CPU=str(args.allow_cpu).lower(), CUDA_LAUNCH_BLOCKING='1',
                    PYTORCH_CUDA_ALLOC_CONF='max_split_size_mb:128,garbage_collection_threshold:0.8')
+        env['TTS_ADAPTATION'] = args.adaptation
         if args.output.startswith('gs://'):
             env['TTS_REMOTE_OUTPUT'] = args.output
         target_step = args.max_steps if args.max_steps > 0 else (
@@ -298,6 +306,8 @@ def run(args):
         if not args.export_only and last_step != target_step:
             raise RuntimeError(f'Training stopped at {last_step}; expected exactly {target_step}')
         # Optimizer states are already backed up separately; export inference files.
+        if (work / 'adaptation-validation.json').exists():
+            store.upload(work / 'adaptation-validation.json', args.output.rstrip('/') + '/adaptation-validation.json', allow_identical=True)
         for path in sorted((work / 'model').iterdir()):
             if path.is_file():
                 store.upload(path, args.output.rstrip('/') + '/model/' + path.name, allow_identical=True)

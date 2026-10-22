@@ -1,0 +1,14 @@
+{
+  "run_id": "157b3de4f137cb77eeb1-recovery-1",
+  "uri": "gs://koyokana-studio.firebasestorage.app/runs/157b3de4f137cb77eeb1-recovery-1/model",
+  "files": {
+    "config.json": "c9b0f16bb3ada2cd02223ee9b0d8cafe4e0cbde3440a28196d4ecd62d3581f3e",
+    "model.safetensors": "492a18db1e57ddc2b83fbbc72e39be6b4cb9f9e1c3fe4aa95ed11e08f6054967",
+    "preprocessor_config.json": "72877422bd3ff8f768c8a9e839ddf60c2832ad1fab580d546035c6ca96bb0c87",
+    "special_tokens_map.json": "ff6012fb67bf09a1a8d9dfe965d08ba5891c543ed4d36d9a8de204d4659cc4d2",
+    "tokenizer_config.json": "008af842be073156854cb780813926133446ad03570eedf3e9a47e95401f0730",
+    "vocab.json": "ef4f1d4a1b0cf315c96039bc78843e01db6d944810b6f48d2ef4306b282e499a"
+  },
+  "manifest_sha256": "4f195a5c3de7a4d3c4a09331a33212a31a635bffa4aa32196c0c1b0e1d7f89cf",
+  "dataset_fingerprint": "efb073bc3ee4cfd28dd1a2e2efcfce308cbd348833bc2c6a789dfab308649ffd"
+}

@@ -32,4 +32,14 @@ describe('voice playground text and audio', () => {
       status: 429, headers: { 'Content-Type': 'application/json' },
     }))).toBeRejectedWithError('Daily allowance reached');
   });
+  it('refuses to play audio from a different checkpoint or delivery trial', async () => {
+    await expectAsync(voiceResponse(wavResponse(), { model: 'step-2000', profile: 'steady' })).toBeRejected();
+    const result = await voiceResponse(wavResponse({ 'X-Voice-Version': '2', 'X-Voice-Model': 'step-2000', 'X-Voice-Profile': 'steady',
+      'X-Voice-Source-Run': '157b3de4f137cb77eeb1', 'X-Voice-Training-Step': '2000' }),
+      { model: 'step-2000', profile: 'steady' });
+    expect(result.text).toBe('mbote');
+    await expectAsync(voiceResponse(wavResponse({ 'X-Voice-Version': '2', 'X-Voice-Model': 'kinshasa-1000', 'X-Voice-Profile': 'gentle',
+      'X-Voice-Source-Run': VOICE_RUN, 'X-Voice-Training-Step': '1000' }),
+      { model: 'kinshasa-1000', profile: 'gentle' })).toBeRejected();
+  });
 });

@@ -1,0 +1,44 @@
+{
+  "createTime": "2026-10-22T04:40:53.183283Z",
+  "displayName": "tts-v2-voice-r1",
+  "jobSpec": {
+    "scheduling": {
+      "timeout": "7200s"
+    },
+    "serviceAccount": "tts-trainer@koyokana-studio.iam.gserviceaccount.com",
+    "workerPoolSpecs": [
+      {
+        "containerSpec": {
+          "args": [
+            "--manifest=gs://koyokana-studio.firebasestorage.app/datasets/tts-v1/manifest.jsonl",
+            "--base-model=UBC-NLP/Simba-TTS-lin",
+            "--epochs=32",
+            "--learning-rate=0.00002",
+            "--batch-size=8",
+            "--max-steps=3000",
+            "--save-steps=500",
+            "--adaptation=voice",
+            "--sample-device=cpu",
+            "--cuda-retries=1",
+            "--output=gs://koyokana-studio.firebasestorage.app/runs/tts-v2-voice-r1/",
+            "--run-id=tts-v2-voice-r1"
+          ],
+          "imageUri": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:6522eb1a5b22ce5a60eb274a24c8e5fbc4e9eb1a3aed1c9ad697dcf0cc3cd8ac"
+        },
+        "diskSpec": {
+          "bootDiskSizeGb": 100,
+          "bootDiskType": "pd-ssd"
+        },
+        "machineSpec": {
+          "acceleratorCount": 1,
+          "acceleratorType": "NVIDIA_L4",
+          "machineType": "g2-standard-8"
+        },
+        "replicaCount": "1"
+      }
+    ]
+  },
+  "name": "projects/303635763719/locations/us-central1/customJobs/1921498901429354496",
+  "state": "JOB_STATE_PENDING",
+  "updateTime": "2026-10-22T04:40:53.183283Z"
+}

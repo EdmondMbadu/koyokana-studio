@@ -39,6 +39,10 @@ def restore_checkpoint(args, store, work, rows):
     for key in ('base_model', 'batch_size', 'learning_rate', 'seed', 'epochs'):
         if run['arguments'][key] != getattr(args, key):
             raise ValueError('Resume training setting differs: ' + key)
+    if run['arguments'].get('adaptation', 'full') != getattr(args, 'adaptation', 'full'):
+        raise ValueError('Resume adaptation mode differs')
+    if run['arguments'].get('initial_model', 'base') != getattr(args, 'initial_model', 'base'):
+        raise ValueError('Resume initial voice differs')
     if run['source_sha256']['data.py'] != file_sha256(Path(__file__).parent / 'data.py'):
         raise ValueError('Resume preprocessing implementation differs')
     provenance = json.loads((Path(__file__).parent / 'provenance.json').read_text())

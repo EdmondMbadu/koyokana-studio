@@ -7,6 +7,7 @@ upstream recipe; patch_vits.py records the checked discriminator-gradient fix.
 import json
 import math
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -18,6 +19,7 @@ from recovery import CHECKPOINT_FILES
 from safe_optimizer import SafeAdamW
 import run_vits_finetuning as trainer
 import torch
+from adaptation import keep_frozen_eval, verify_adaptation
 
 torch.optim.AdamW = SafeAdamW
 
@@ -40,6 +42,7 @@ original_forward = trainer.VitsModelForPreTraining.forward
 
 def forward(self, *args, **kwargs):
     self.train(kwargs.get('labels') is not None and torch.is_grad_enabled())
+    keep_frozen_eval(self)
     return original_forward(self, *args, **kwargs)
 
 
@@ -54,9 +57,14 @@ remote = os.environ.get('TTS_REMOTE_OUTPUT', '').rstrip('/')
 
 def log(self, values, step=None, **kwargs):
     values = {key: float(value) for key, value in values.items()}
+    if 'val_loss_mel' in values:
+        # The pinned upstream sums one loss per held-out clip. Report means,
+        # with explicit counts/version, rather than presenting sums as errors.
+        values = {k: v / len(data['eval']) if k.startswith('val_loss_') else v for k, v in values.items()}
     if not all(math.isfinite(v) for v in values.values()):
         raise FloatingPointError(f'Nonfinite loss at step {step}')
-    record = {'step': step, 'attempt': attempt, 'time': time.time(), **values}
+    record = {'step': step, 'attempt': attempt, 'time': time.time(), 'metric_version': 2,
+              'validation_reduction': 'mean_per_clip', 'validation_clips': len(data['eval']), **values}
     with metrics_path.open('a') as f:
         f.write(json.dumps(record) + '\n')
     if self.is_main_process and remote and (step % 50 == 0 or 'val_loss_mel' in values):
@@ -71,6 +79,8 @@ def log(self, values, step=None, **kwargs):
 
 
 def save(self, output_dir=None, **kwargs):
+    if self.is_main_process:
+        verify_adaptation(self.unwrap_model(self._models[0]), metrics_path.parent / 'adaptation-validation.json')
     result = original_save(self, output_dir=output_dir, **kwargs)
     if self.is_main_process:
         path = Path(output_dir)
@@ -82,6 +92,13 @@ def save(self, output_dir=None, **kwargs):
         (path / 'complete.json').write_text(json.dumps(marker, sort_keys=True) + '\n')
         if remote:
             Store().upload(path / 'complete.json', target + '/complete.json', allow_identical=True)
+        if os.environ.get('TTS_ADAPTATION', 'full') != 'full':
+            # Checkpoints are already durable. A separate CPU process cannot
+            # change the live GPU model's mode, RNG or weight normalization.
+            subprocess.run([sys.executable, str(Path(__file__).parent / 'checkpoint_preview.py'),
+                '--checkpoint', str(path), '--work', str(metrics_path.parent),
+                '--step', str(marker['step']), '--remote', remote,
+                '--attempt', str(attempt)], check=True)
     return result
 
 

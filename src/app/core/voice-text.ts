@@ -14,8 +14,31 @@ export function voiceText(value: string): string {
 }
 
 export const VOICE_RUN = '157b3de4f137cb77eeb1-recovery-1';
+export const VOICE_PROFILES = [
+  { id: 'steady', label: 'Steady · v2 trial', description: 'Less variation, with short pauses at punctuation.' },
+  { id: 'gentle', label: 'Gentle · v2 trial', description: 'Slightly slower, with less variation and punctuation pauses.' },
+  { id: 'original', label: 'Original · v1 comparison', description: 'The original delivery settings, without added pauses.' },
+] as const;
+export const VOICE_MODELS = [
+  { id: 'final', label: 'Final · 9,600 steps' },
+  { id: 'kinshasa-1000', label: 'Kinshasa pronunciation trial · +1,000 steps' },
+  { id: 'step-2000', label: 'Earlier · 2,000 steps' },
+  { id: 'step-4000', label: 'Earlier · 4,000 steps' },
+  { id: 'step-6000', label: 'Earlier · 6,000 steps' },
+  { id: 'step-8000', label: 'Earlier · 8,000 steps' },
+] as const;
+export type VoiceProfile = typeof VOICE_PROFILES[number]['id'];
+export type VoiceModel = typeof VOICE_MODELS[number]['id'];
+const MODEL_SOURCES: Record<VoiceModel, { run: string; step: number }> = {
+  final: { run: VOICE_RUN, step: 9600 },
+  'kinshasa-1000': { run: 'tts-v2-kinshasa-r1', step: 1000 },
+  'step-2000': { run: '157b3de4f137cb77eeb1', step: 2000 },
+  'step-4000': { run: '157b3de4f137cb77eeb1', step: 4000 },
+  'step-6000': { run: '157b3de4f137cb77eeb1', step: 6000 },
+  'step-8000': { run: '157b3de4f137cb77eeb1', step: 8000 },
+};
 
-export async function voiceResponse(response: Response): Promise<{ blob: Blob; text: string; generationMs: number; duration: number; cached: boolean }> {
+export async function voiceResponse(response: Response, selection?: { profile: VoiceProfile; model: VoiceModel }): Promise<{ blob: Blob; text: string; generationMs: number; duration: number; cached: boolean }> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(body.error || (response.status === 429 ? 'Please wait before generating again.' : 'Speech could not be generated. Please try again.'));
@@ -23,6 +46,11 @@ export async function voiceResponse(response: Response): Promise<{ blob: Blob; t
   const text = response.headers.get('X-Voice-Text');
   const generationMs = Number(response.headers.get('X-Voice-Generation-Ms'));
   const duration = Number(response.headers.get('X-Voice-Duration'));
+  if (selection && (response.headers.get('X-Voice-Version') !== '2'
+      || response.headers.get('X-Voice-Profile') !== selection.profile || response.headers.get('X-Voice-Model') !== selection.model
+      || response.headers.get('X-Voice-Source-Run') !== MODEL_SOURCES[selection.model].run
+      || Number(response.headers.get('X-Voice-Training-Step')) !== MODEL_SOURCES[selection.model].step))
+    throw new Error('The voice service did not use the selected version. Refresh the page and try again.');
   if (!response.headers.get('Content-Type')?.startsWith('audio/wav') || response.headers.get('X-Voice-Run') !== VOICE_RUN
       || !text || !Number.isFinite(generationMs) || generationMs < 0 || !Number.isFinite(duration) || duration <= 0 || duration > 60)
     throw new Error('The voice service returned an incomplete response. Please try again.');

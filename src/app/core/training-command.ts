@@ -40,6 +40,8 @@ export function trainingCommand(
           ...(run.resumeFrom ? [`--resume-from=${run.resumeFrom}`] : []),
           ...(run.checkpointEverySteps ? [`--save-steps=${run.checkpointEverySteps}`] : []),
           ...(run.targetSteps ? [`--max-steps=${run.targetSteps}`] : []),
+          ...(run.adaptation ? [`--adaptation=${run.adaptation}`] : []),
+          ...(run.initialModel ? [`--initial-model=${run.initialModel}`] : []),
         ],
       },
     }],

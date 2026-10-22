@@ -16,7 +16,7 @@ COPY provenance.json bootstrap.py ./
 RUN python bootstrap.py
 # All model downloads happen during the build, before renting a GPU.
 ENV HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
-COPY *.py phone-phrases.json ./
+COPY *.py phone-phrases.json voice-source.json ./
 RUN python patch_vits.py && python -m unittest discover -s . -p 'test_*.py' -v
 ENTRYPOINT ["python", "/app/train.py"]
 

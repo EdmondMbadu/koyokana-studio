@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { voiceResponse, voiceText } from '../../core/voice-text';
+import { voiceResponse, voiceText, VOICE_PROFILES, VOICE_MODELS, VoiceModel, VoiceProfile } from '../../core/voice-text';
 import { Icon } from '../../ui/icon';
 
 @Component({
@@ -23,6 +23,11 @@ export class Voice {
   protected readonly duration = signal(0);
   protected readonly cached = signal(false);
   protected readonly elapsed = signal(0);
+  protected readonly profiles = VOICE_PROFILES;
+  protected readonly models = VOICE_MODELS;
+  protected readonly profile = signal<VoiceProfile>('gentle');
+  protected readonly model = signal<VoiceModel>('final');
+  protected readonly profileDescription = computed(() => VOICE_PROFILES.find(p => p.id === this.profile())!.description);
   protected readonly examples = [
     'Mbote baninga, lelo tozali komeka mongongo na ngai.',
     'Soki oyoki ngai malamu, loba mbote.',
@@ -49,6 +54,16 @@ export class Voice {
     this.text.set(value); this.error.set(''); this.clearAudio();
   }
 
+  protected selectProfile(value: VoiceProfile) {
+    if (this.busy()) return;
+    this.profile.set(value); this.error.set(''); this.clearAudio();
+  }
+
+  protected selectModel(value: VoiceModel) {
+    if (this.busy()) return;
+    this.model.set(value); this.error.set(''); this.clearAudio();
+  }
+
   private clearAudio() {
     if (this.audioUrl()) URL.revokeObjectURL(this.audioUrl());
     this.audioUrl.set(''); this.spokenText.set('');
@@ -67,11 +82,11 @@ export class Voice {
     try {
       const request = async (refresh: boolean) => fetch('/api/voice/synthesize', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user.getIdToken(refresh)}` },
-        body: JSON.stringify({ text: this.text() }), signal: controller.signal, cache: 'no-store',
+        body: JSON.stringify({ text: this.text(), profile: this.profile(), model: this.model() }), signal: controller.signal, cache: 'no-store',
       });
       let response = await request(false);
       if (response.status === 401) response = await request(true);
-      const result = await voiceResponse(response);
+      const result = await voiceResponse(response, { profile: this.profile(), model: this.model() });
       if (this.destroyed || controller.signal.aborted) return;
       if (result.text !== this.preview().text) throw new Error('The speech text changed unexpectedly. Please try again.');
       this.spokenText.set(result.text); this.generationMs.set(result.generationMs);

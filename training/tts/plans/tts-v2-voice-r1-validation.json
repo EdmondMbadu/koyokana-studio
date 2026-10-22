@@ -1,0 +1,59 @@
+{
+  "status": "superseded_by_pronunciation_strategy",
+  "comparison_wavs": 70,
+  "comparison_prompts": 10,
+  "profiles": [
+    "original",
+    "steady",
+    "gentle"
+  ],
+  "checkpoint_steps": [
+    2000,
+    4000,
+    6000,
+    8000,
+    9600
+  ],
+  "human_naturalness_evaluation": "pending",
+  "training_build": "e31d39ac-d68e-4fb6-bb0b-db4e7001a23e",
+  "training_image": "sha256:6522eb1a5b22ce5a60eb274a24c8e5fbc4e9eb1a3aed1c9ad697dcf0cc3cd8ac",
+  "serving_build": "62f78452-f050-43e3-842d-10f06cdd454f",
+  "serving_image": "sha256:f92a15561a6d8151840ad2668fe3313b99c575eaf417a46b3db4c2c5254bafc7",
+  "tests": {
+    "angular": 40,
+    "serving_unit": 14,
+    "training_unit": 19,
+    "real_training_and_recovery_smoke": "passed",
+    "real_voice_adaptation_smoke": "passed",
+    "real_checkpoint_inference_smoke": "passed"
+  },
+  "training_job": "projects/303635763719/locations/us-central1/customJobs/1921498901429354496",
+  "training_run": "tts-v2-voice-r1",
+  "training_state_at_submission": "JOB_STATE_PENDING",
+  "training_target_steps": 3000,
+  "training_timeout_seconds": 7200,
+  "source_dataset": "tts-v1",
+  "new_recordings": 0,
+  "automatic_quality_promotion": false,
+  "training_state_last_checked": "JOB_STATE_CANCELLED",
+  "last_checked_utc": "2026-10-22T04:59:49.863543+00:00",
+  "serving_revision": "tts-serve-00003-x4k",
+  "hosting_deployed": true,
+  "public_unauthenticated_request_status": 401,
+  "browser_verified": {
+    "sentence": "Soki oyoki ngai malamu, loba mbote.",
+    "final_steady": {
+      "duration_seconds": 4.872,
+      "generation_seconds": 5.95,
+      "playback_ended": true
+    },
+    "step_2000_original": {
+      "duration_seconds": 3.504,
+      "generation_seconds": 4.58,
+      "playback_ended": true
+    }
+  },
+  "cancellation_reason": "Listener reports non-Kinshasa accent; do not freeze pronunciation in selected experiment.",
+  "superseded_by": "tts-v2-kinshasa-r1",
+  "delivery_runtime_fix": "VITS runtime attributes must be updated, not config alone; corrected release pending deployment"
+}

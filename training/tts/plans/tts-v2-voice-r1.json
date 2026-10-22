@@ -1,0 +1,38 @@
+{
+  "serviceAccount": "tts-trainer@koyokana-studio.iam.gserviceaccount.com",
+  "scheduling": {
+    "timeout": "7200s",
+    "restartJobOnWorkerRestart": false
+  },
+  "workerPoolSpecs": [
+    {
+      "machineSpec": {
+        "machineType": "g2-standard-8",
+        "acceleratorType": "NVIDIA_L4",
+        "acceleratorCount": 1
+      },
+      "replicaCount": 1,
+      "diskSpec": {
+        "bootDiskType": "pd-ssd",
+        "bootDiskSizeGb": 100
+      },
+      "containerSpec": {
+        "imageUri": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:6522eb1a5b22ce5a60eb274a24c8e5fbc4e9eb1a3aed1c9ad697dcf0cc3cd8ac",
+        "args": [
+          "--manifest=gs://koyokana-studio.firebasestorage.app/datasets/tts-v1/manifest.jsonl",
+          "--base-model=UBC-NLP/Simba-TTS-lin",
+          "--epochs=32",
+          "--learning-rate=0.00002",
+          "--batch-size=8",
+          "--max-steps=3000",
+          "--save-steps=500",
+          "--adaptation=voice",
+          "--sample-device=cpu",
+          "--cuda-retries=1",
+          "--output=gs://koyokana-studio.firebasestorage.app/runs/tts-v2-voice-r1/",
+          "--run-id=tts-v2-voice-r1"
+        ]
+      }
+    }
+  ]
+}

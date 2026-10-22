@@ -10,11 +10,14 @@ p = argparse.ArgumentParser()
 p.add_argument('--source', required=True, type=Path)
 p.add_argument('--metadata', required=True, type=Path)
 p.add_argument('--validation', required=True, type=Path)
+p.add_argument('--expected-step', type=int, default=9600)
+p.add_argument('--expected-run')
 p.add_argument('--output', type=Path, default=Path(__file__).parent / 'model')
 args = p.parse_args()
 validation = json.loads(args.validation.read_text())
-if validation['step'] != 9600 or not validation['training_complete']:
-    raise ValueError('Use the verified complete first voice export')
+if (validation['step'] != args.expected_step or not validation['training_complete']
+        or (args.expected_run and validation['run_id'] != args.expected_run)):
+    raise ValueError('Use the verified complete expected voice export')
 for item in json.loads(args.metadata.read_text()):
     metadata = item['metadata']
     source = args.source / Path(metadata['name']).name
@@ -51,7 +54,7 @@ config = json.loads(config_path.read_text())
 config['architectures'] = ['VitsModel']
 config.pop('_name_or_path', None)
 config_path.write_text(json.dumps(config, indent=2) + '\n')
-provenance = {'run_id': validation['run_id'], 'training_step': 9600,
+provenance = {'run_id': validation['run_id'], 'training_step': args.expected_step,
               'source_weight_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
               'inference_tensors': len(copies),
               'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(args.output.iterdir())}}

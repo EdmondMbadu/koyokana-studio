@@ -4,13 +4,14 @@ import io
 import json
 import statistics
 import wave
+from pathlib import Path
 from unittest.mock import Mock
 
 import numpy as np
 from app import create_app
 from engine import VoiceEngine
 
-engine = VoiceEngine()
+engine = VoiceEngine(Path(__file__).parent / 'model')
 client = create_app(engine, Mock()).test_client()
 sentences = [
     'Mbote baninga, lelo tozali komeka mongongo na ngai.',
@@ -39,5 +40,33 @@ for text in sentences:
 repeat = client.post('/api/voice/synthesize', json={'text': sentences[-1]})
 assert repeat.headers['X-Voice-Cached'] == 'true'
 assert hashlib.sha256(repeat.data).hexdigest() == results[-1]['wav_sha256']
+from delivery import MODEL_IDS
+for model_id in MODEL_IDS:
+    r = client.post('/api/voice/synthesize', json={'text': sentences[1], 'model': model_id, 'profile': 'steady'})
+    assert r.status_code == 200, r.json
+    assert r.headers['X-Voice-Model'] == model_id
+    assert r.headers['X-Voice-Profile'] == 'steady'
+    expected_run = ('tts-v2-kinshasa-r1' if model_id == 'kinshasa-1000' else
+                    '157b3de4f137cb77eeb1-recovery-1' if model_id == 'final' else '157b3de4f137cb77eeb1')
+    assert r.headers['X-Voice-Source-Run'] == expected_run
+    assert float(r.headers['X-Voice-Duration']) > .1
+gentle = client.post('/api/voice/synthesize', json={'text': sentences[1], 'profile': 'gentle'})
+assert gentle.status_code == 200
+# A delivery/model switch must never reuse audio from another selection.
+original = client.post('/api/voice/synthesize', json={'text': sentences[1]})
+assert hashlib.sha256(original.data).hexdigest() == results[1]['wav_sha256']
+assert original.data != gentle.data
+assert original.headers['X-Voice-Source-Run'] == '157b3de4f137cb77eeb1-recovery-1'
+assert original.headers['X-Voice-Training-Step'] == '9600'
+steady_plain = client.post('/api/voice/synthesize', json={'text': 'soki oyoki ngai malamu loba mbote', 'profile': 'steady'})
+gentle_plain = client.post('/api/voice/synthesize', json={'text': 'soki oyoki ngai malamu loba mbote', 'profile': 'gentle'})
+original_plain = client.post('/api/voice/synthesize', json={'text': 'soki oyoki ngai malamu loba mbote', 'profile': 'original'})
+assert steady_plain.status_code == gentle_plain.status_code == original_plain.status_code == 200
+# Same one-phrase text isolates the actual runtime noise/rate controls from pauses.
+assert len({steady_plain.data, gentle_plain.data, original_plain.data}) == 3
+uncached_original = client.post('/api/voice/synthesize', json={'text': 'matondi mpo na lisalisi na yo', 'profile': 'original'})
+assert uncached_original.status_code == 200
+for name, value in {'speaking_rate': 1.0, 'noise_scale': .667, 'noise_scale_duration': .8}.items():
+    assert getattr(engine.model, name) == value
 print('REAL MODEL SMOKE PASSED: ' + json.dumps({'run_id': engine.provenance['run_id'], 'new_sentences': len(results),
     'median_generation_ms': statistics.median(r['generation_ms'] for r in results), 'results': results}))

@@ -1,8 +1,10 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.0.0', '.']
+    args: ['pull', 'us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.1.1']
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '--cache-from', 'us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.1.1', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.1.2', '.']
 images:
-  - us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.0.0
+  - us-central1-docker.pkg.dev/$PROJECT_ID/koyokana/tts-serve:v1.1.2
 timeout: 1200s
 options:
   machineType: E2_HIGHCPU_8

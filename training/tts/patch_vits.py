@@ -3,6 +3,12 @@ from pathlib import Path
 
 path = Path('/opt/vits/run_vits_finetuning.py')
 source = path.read_text()
+source = 'from adaptation import configure_adaptation, generator_parameter_groups\nimport os\n' + source
+needle = '    gen_optimizer = torch.optim.AdamW(\n        model.parameters(),'
+if source.count(needle) != 1:
+    raise RuntimeError('Pinned adaptation optimizer patch no longer applies')
+source = source.replace(needle, '    configure_adaptation(model, os.environ.get("TTS_ADAPTATION", "full"))\n'
+                        '    gen_optimizer = torch.optim.AdamW(\n        generator_parameter_groups(model),')
 # Accelerate/BatchEncoding omit None-valued fields during device transfer.
 # A mono-speaker model correctly expects None, so do not require the key.
 needle = 'speaker_id=batch["speaker_id"],'

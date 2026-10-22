@@ -1,0 +1,8 @@
+# The immutable base contains the already verified five private generators.
+# Add only the verified pronunciation trial to the existing five generators.
+FROM us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-serve@sha256:ee87001492db9c7c880bf25aab09df86efb464862d1590617560ac905db71c52
+USER root
+COPY *.py ./
+COPY model/candidates/kinshasa-1000 ./model/candidates/kinshasa-1000
+RUN python -m unittest discover -p 'test_*.py' -v && python smoke_test.py
+USER koyokana

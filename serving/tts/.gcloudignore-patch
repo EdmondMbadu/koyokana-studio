@@ -1,0 +1,8 @@
+*
+!*.py
+!Dockerfile.patch
+!cloudbuild-patch.yaml
+!model/
+!model/candidates/
+!model/candidates/kinshasa-1000/
+!model/candidates/kinshasa-1000/**

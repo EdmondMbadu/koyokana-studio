@@ -2,6 +2,14 @@ import { trainingCommand } from './training-command';
 import { TrainingRun } from './models';
 
 describe('trainingCommand', () => {
+  it('reproduces the conservative adaptation experiment', () => {
+    const command = trainingCommand({ id: 'v2', name: 'v2', task: 'tts', adaptation: 'pronunciation', initialModel: 'first-voice', targetSteps: 3000,
+      checkpointEverySteps: 500, hyperparams: { epochs: 32, batchSize: 8, learningRate: 2e-5 } } as TrainingRun,
+      { projectId: 'project', region: 'us-central1', artifactRepo: 'repo' },
+      { machineType: 'g2-standard-8', accelerator: 'NVIDIA_L4', count: 1 });
+    expect(command).toContain('--adaptation=pronunciation'); expect(command).toContain('--initial-model=first-voice');
+    expect(command).toContain('--max-steps=3000');
+  });
   it('preserves the recovery checkpoint and absolute target instead of starting over', () => {
     const command = trainingCommand({ id: 'recovery1', name: 'Recovery', task: 'tts', timeoutSeconds: 14400,
       resumeFrom: 'gs://bucket/runs/original/checkpoints/checkpoint-8000', targetSteps: 9600, checkpointEverySteps: 200,

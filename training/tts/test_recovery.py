@@ -82,6 +82,13 @@ class RecoveryTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 restore_checkpoint(args, Store(), work, rows)
 
+    def test_changed_adaptation_mode_cannot_reuse_incompatible_optimizer(self):
+        with tempfile.TemporaryDirectory() as temp:
+            _, _, work, args, rows = self.fixture(Path(temp))
+            args.adaptation = 'voice'
+            with self.assertRaisesRegex(ValueError, 'adaptation mode'):
+                restore_checkpoint(args, Store(), work, rows)
+
     def test_changed_audio_or_manifest_and_invalid_commit_marker_rejected(self):
         for case in ('audio', 'manifest', 'marker'):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
