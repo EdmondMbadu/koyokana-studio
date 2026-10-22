@@ -8,7 +8,7 @@ PROFILES = {
     'steady': {'noise_scale': 0.45, 'noise_scale_duration': 0.5, 'speaking_rate': 1.0},
     'gentle': {'noise_scale': 0.35, 'noise_scale_duration': 0.35, 'speaking_rate': 0.95},
 }
-MODEL_IDS = ('final', 'step-2000', 'step-4000', 'step-6000', 'step-8000', 'kinshasa-1000')
+MODEL_IDS = ('final', 'step-2000', 'step-4000', 'step-6000', 'step-8000', 'kinshasa-1000', 'kinshasa-2000')
 
 
 def delivery_plan(value, vocab, profile):

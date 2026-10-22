@@ -46,10 +46,24 @@ for model_id in MODEL_IDS:
     assert r.status_code == 200, r.json
     assert r.headers['X-Voice-Model'] == model_id
     assert r.headers['X-Voice-Profile'] == 'steady'
-    expected_run = ('tts-v2-kinshasa-r1' if model_id == 'kinshasa-1000' else
+    expected_run = ('tts-v2-kinshasa-r2-recovery-1' if model_id == 'kinshasa-2000' else
+                    'tts-v2-kinshasa-r1' if model_id == 'kinshasa-1000' else
                     '157b3de4f137cb77eeb1-recovery-1' if model_id == 'final' else '157b3de4f137cb77eeb1')
     assert r.headers['X-Voice-Source-Run'] == expected_run
     assert float(r.headers['X-Voice-Duration']) > .1
+# Verify the user's pronunciation comparison with the same delivery and text.
+trials = []
+for model_id, step in [('kinshasa-1000', 1000), ('kinshasa-2000', 2000)]:
+    r = client.post('/api/voice/synthesize', json={'text': sentences[0], 'model': model_id, 'profile': 'gentle'})
+    assert r.status_code == 200, r.json
+    assert r.headers['X-Voice-Training-Step'] == str(step)
+    assert r.headers['X-Voice-Cached'] == 'false'
+    trials.append(r.data)
+assert trials[0] != trials[1], 'The new trial returned the previous model audio'
+cached_trial = client.post('/api/voice/synthesize', json={'text': sentences[0], 'model': 'kinshasa-1000', 'profile': 'gentle'})
+assert cached_trial.headers['X-Voice-Cached'] == 'true'
+assert cached_trial.headers['X-Voice-Source-Run'] == 'tts-v2-kinshasa-r1'
+assert cached_trial.data == trials[0]
 gentle = client.post('/api/voice/synthesize', json={'text': sentences[1], 'profile': 'gentle'})
 assert gentle.status_code == 200
 # A delivery/model switch must never reuse audio from another selection.

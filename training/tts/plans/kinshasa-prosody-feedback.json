@@ -1,0 +1,113 @@
+{
+  "user_feedback": {
+    "sentence": "Mbote baninga, lelo tozali komeka mongongo na ngai.",
+    "words": [
+      "baninga",
+      "lelo",
+      "ngai"
+    ],
+    "issue": "Subtle stress, pitch or rhythm differs from native Lingala; no correct tone contour supplied."
+  },
+  "existing_recording_coverage": {
+    "baninga": {
+      "train": 1,
+      "eval": 0,
+      "examples": [
+        {
+          "id": "SpuoxblAUTmkPSgD3Ks4",
+          "text": "Baninga na ngai bayei kotala ngai lobi.",
+          "split": "train"
+        }
+      ]
+    },
+    "lelo": {
+      "train": 57,
+      "eval": 3,
+      "examples": [
+        {
+          "id": "1c3rYTMHOZXEsEntIWCs",
+          "text": "Mama Pauline afuti trois cent mille francs lelo na ntongo.",
+          "split": "train"
+        },
+        {
+          "id": "1FPb8uaVhhIcc8VNcD35",
+          "text": "Lelo mokolo ya mbotama ya mwana na ngai.",
+          "split": "train"
+        },
+        {
+          "id": "1jX8JpM4jDqKdroWG0fj",
+          "text": "Lelo na ntongo, nakendaki na zando ya Gambela, kasi biloko ezalaki mingi te mpe ntalo ezalaki makasi.",
+          "split": "eval"
+        },
+        {
+          "id": "2r1vkLWc00FTu5LWphI8",
+          "text": "Dollar moko ezali deux mille huit cent cinquante francs lelo.",
+          "split": "train"
+        },
+        {
+          "id": "4Gq6Oyw6arixVtUkLWSp",
+          "text": "Mbula ezali kobeta makasi lelo.",
+          "split": "train"
+        }
+      ]
+    },
+    "ngai": {
+      "train": 90,
+      "eval": 4,
+      "examples": [
+        {
+          "id": "0u4OEWuZPNxOvPREJqlQ",
+          "text": "Bana na ngai basalisaka ngai na zando na samedi.",
+          "split": "train"
+        },
+        {
+          "id": "0wFbC0KWA4XNf3OauBHa",
+          "text": "Motema na ngai etondi esengo.",
+          "split": "eval"
+        },
+        {
+          "id": "1FPb8uaVhhIcc8VNcD35",
+          "text": "Lelo mokolo ya mbotama ya mwana na ngai.",
+          "split": "train"
+        },
+        {
+          "id": "2g4Xy0xGTzKVXlPlax0m",
+          "text": "Nimero na ngai ezali zéro huit quatre, six sept zéro, deux huit, zéro six.",
+          "split": "train"
+        },
+        {
+          "id": "3aDEcgwqvbd5bXlch24L",
+          "text": "Nimero na ngai ezali zéro neuf neuf, huit huit zéro, un neuf, un sept.",
+          "split": "train"
+        }
+      ]
+    },
+    "exact_sentence": []
+  },
+  "evaluation_note": "Keep existing train/eval split; use same text, delivery and seed when comparing. Native listener judgment required.",
+  "additional_feedback": {
+    "sentence": "Soki oyoki ngai malamu, loba mbote.",
+    "words": {
+      "loba": {
+        "preferred_emphasis": "LO-ba",
+        "reported_generated_emphasis": "lo-BA"
+      },
+      "mbote": {
+        "preferred_emphasis": "MBO-te",
+        "reported_generated_emphasis": "mbo-TE"
+      }
+    },
+    "user_hypothesis": "First syllable emphasis may be preferable across other two-syllable words.",
+    "interpretation": "Native-listener observations for these words and context; do not impose as a universal stress or tone rule. Written feedback is an evaluation target, not new labeled audio.",
+    "existing_recording_coverage": {
+      "loba": {
+        "train": 5,
+        "eval": 0
+      },
+      "mbote": {
+        "train": 9,
+        "eval": 2
+      }
+    }
+  }
+}

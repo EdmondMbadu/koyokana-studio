@@ -50,6 +50,17 @@ python serving/tts/compare.py --index /private/path/to/samples/index.json \
 
 No new recording or new script is required for these experiments. More data,
 different spelling representations or another base model remain later decisions.
+The second pronunciation continuation, `tts-v2-kinshasa-r2`, failed at step
+1,823 with a cuDNN engine error. `tts-v2-kinshasa-r2-recovery-1` restored its
+committed step-1,750 checkpoint and both optimizers, then completed step 2,000.
+The recovery uses `TORCH_CUDNN_V8_API_DISABLED=1`, the documented cuDNN v7
+fallback supported by this pinned PyTorch release. The studio preserves this
+setting in the copied recovery command. Exactly 1,000 additional updates after
+the first pronunciation trial were verified across the two jobs, together with
+all model hashes, 836 finite tensors and 119 sample WAVs. Serving release
+`v1.3.0` exposes this as `kinshasa-2000` alongside `kinshasa-1000`; native
+listening still decides whether the extra training improves the voice.
+
 16 kHz limits bandwidth; it does not, by itself, impose robotic prosody or prove
 that natural speech is impossible. Reference settings: [VITS inference
 controls](https://huggingface.co/docs/transformers/model_doc/vits) and the pinned

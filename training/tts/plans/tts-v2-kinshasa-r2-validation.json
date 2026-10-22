@@ -1,0 +1,168 @@
+{
+  "run_id": "tts-v2-kinshasa-r2",
+  "state": "live_typed_text_and_playback_verified",
+  "vertex_job": "projects/303635763719/locations/us-central1/customJobs/6421931935311855616",
+  "source_checkpoint": "gs://koyokana-studio.firebasestorage.app/runs/tts-v2-kinshasa-r1/checkpoints/attempt-0/checkpoint-1000",
+  "resume_step": 1000,
+  "target_step": 2000,
+  "additional_steps": 1000,
+  "checkpoint_interval": 250,
+  "trainer_image": "sha256:e131d5bd03109df60dc196533d714d08b0ca7d5d5d1f94529fee9bca0b22a144",
+  "timeout_seconds": 5400,
+  "dataset_unchanged": true,
+  "human_quality_evaluation": "pending",
+  "automatic_quality_promotion": false,
+  "benchmark": {
+    "delivery": "gentle",
+    "seed": 456,
+    "primary": {
+      "text": "Mbote baninga, lelo tozali komeka mongongo na ngai.",
+      "kind": "unseen-user-diagnostic",
+      "words": [
+        "baninga",
+        "lelo",
+        "ngai"
+      ]
+    },
+    "held_out": [
+      {
+        "id": "0wFbC0KWA4XNf3OauBHa",
+        "text": "Motema na ngai etondi esengo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "1jX8JpM4jDqKdroWG0fj",
+        "text": "Lelo na ntongo, nakendaki na zando ya Gambela, kasi biloko ezalaki mingi te mpe ntalo ezalaki makasi.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "KzJOUZ3v4g9YsxzHQHvZ",
+        "text": "Benga ngai na nimero zéro huit quatre, quatre trois cinq, un un, neuf cinq.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "L9ErjyAORI7ayFpdB3kR",
+        "text": "Benga ngai nsima ya midi.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "QSzxokUEqjXNlst8af20",
+        "text": "Mosala ya lelo esili malamu.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "WRWvWyQl7lqdeNSeHAjk",
+        "text": "Ozwi message na ngai?",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "Z6TRiIxfGOerIJTjCHlR",
+        "text": "Nateki mbisi zomi na mibale lelo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      }
+    ],
+    "ratings": [
+      "intelligibility",
+      "Kinshasa pitch/timing on baninga, lelo, ngai",
+      "speaker resemblance"
+    ],
+    "native_feedback_required": true
+  },
+  "model_not_yet_available_on_voice_page": false,
+  "last_optimizer_step": 1823,
+  "last_committed_checkpoint": 1750,
+  "failure": "cuDNN GET engine unavailable in generator backward",
+  "recovery_run": "tts-v2-kinshasa-r2-recovery-1",
+  "recovery_job": "projects/303635763719/locations/us-central1/customJobs/4926596121536495616",
+  "recovery_backend": "TORCH_CUDNN_V8_API_DISABLED=1",
+  "remaining_steps_from_checkpoint": 250,
+  "release_checks": {
+    "angular_browser_tests": 13,
+    "production_ui_build": "passed",
+    "serving_integration": "Deployed; all seven voice versions pass real inference, cache isolation and selected-source checks.",
+    "expected_serving_model": "kinshasa-2000",
+    "expected_source_run": "tts-v2-kinshasa-r2-recovery-1",
+    "expected_step": 2000,
+    "new_release_tag": "v1.3.0"
+  },
+  "recovery_checkpoint_files": {
+    "model.safetensors": "e92853e95d861e4fe61db2240842b1f94d0df3c4c388abfa9b063501a352b333",
+    "model_1.safetensors": "09e7e3c9446e0dc1e10b42d50ffe4701db6cd137573e7ddd1c1feaa68b4e3aba",
+    "optimizer.bin": "a4d508f287cd0ff2b00c3e3ab4dc3d9ccb14165eb4cdce90b0a90770e9fafe9a",
+    "optimizer_1.bin": "d3fd58f60f4ec43ad51440a7e0c510f89b7f85e2f61e69301a72376ce803fa2b",
+    "random_states_0.pkl": "7a32c97ddb4700c90c04d11cb616d67b210326a2a41d24a1aa345c60fc2d260b",
+    "scheduler.bin": "c7295fdf3bd594e8ed16784e52cdd33ea1e469de225f91cb7b55430beb6224ed",
+    "scheduler_1.bin": "a6ecb675ea067819c1738077293f30f080252aaaf23559bb21696f9c22197b9a"
+  },
+  "backend_reference": "https://raw.githubusercontent.com/pytorch/pytorch/v2.2.2/aten/src/ATen/native/ConvUtils.h",
+  "recovery_completed_at_utc": "2026-10-22T07:35:34Z",
+  "export_validation": {
+    "run_id": "tts-v2-kinshasa-r2-recovery-1",
+    "step": 2000,
+    "training_complete": true,
+    "tensor_count": 836,
+    "wav_count": 119,
+    "frozen_weights_verified": true,
+    "warm_source_verified": true,
+    "human_quality_evaluation": "pending"
+  },
+  "optimizer_restore": {
+    "restored_step": 1750,
+    "attempt": 0,
+    "optimizers": [
+      {
+        "states": 515,
+        "min_step": 1560,
+        "max_step": 1750,
+        "foreach": false
+      },
+      {
+        "states": 111,
+        "min_step": 1750,
+        "max_step": 1750,
+        "foreach": false
+      }
+    ]
+  },
+  "exact_additional_steps_verified": 1000,
+  "controlled_comparison": {
+    "prompts": 10,
+    "wavs": 20,
+    "profile": "gentle",
+    "seed": 456,
+    "two_models_generate_distinct_audio": true,
+    "human_quality_judgment": "pending"
+  },
+  "serving_build_id": "c57e0fdb-39ca-4fd5-b573-30d56cac7760",
+  "serving": {
+    "version": "v1.3.0",
+    "build_id": "c57e0fdb-39ca-4fd5-b573-30d56cac7760",
+    "image_digest": "sha256:c29e121e8cfc87e3ad90f2eb926b8494c2361d0773047a17123fe04a739d8e1b",
+    "revision": "tts-serve-00006-gqc",
+    "default_profile": "gentle",
+    "previous_voices_preserved": true,
+    "real_seven_model_smoke": "passed",
+    "unit_tests": 14,
+    "hosting_deployed": true,
+    "public_unauthenticated_status": 401,
+    "resource_limits_preserved": true,
+    "browser": {
+      "model": "kinshasa-2000",
+      "profile": "gentle",
+      "text": "Mbote baninga, lelo tozali komeka mongongo na ngai.",
+      "duration_seconds": 5.128,
+      "generation_seconds": 6.52,
+      "playback_ended": true,
+      "playback_error": null,
+      "selected_source_verified_by_client_guard": true
+    }
+  },
+  "verified_at_utc": "2026-10-22T07:49:21.229595+00:00"
+}

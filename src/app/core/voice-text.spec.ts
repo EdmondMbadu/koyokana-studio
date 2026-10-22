@@ -41,5 +41,10 @@ describe('voice playground text and audio', () => {
     await expectAsync(voiceResponse(wavResponse({ 'X-Voice-Version': '2', 'X-Voice-Model': 'kinshasa-1000', 'X-Voice-Profile': 'gentle',
       'X-Voice-Source-Run': VOICE_RUN, 'X-Voice-Training-Step': '1000' }),
       { model: 'kinshasa-1000', profile: 'gentle' })).toBeRejected();
+    const trial2 = { 'X-Voice-Version': '2', 'X-Voice-Model': 'kinshasa-2000', 'X-Voice-Profile': 'gentle',
+      'X-Voice-Source-Run': 'tts-v2-kinshasa-r2-recovery-1', 'X-Voice-Training-Step': '2000' };
+    expect((await voiceResponse(wavResponse(trial2), { model: 'kinshasa-2000', profile: 'gentle' })).text).toBe('mbote');
+    await expectAsync(voiceResponse(wavResponse({ ...trial2, 'X-Voice-Source-Run': 'tts-v2-kinshasa-r1' }),
+      { model: 'kinshasa-2000', profile: 'gentle' })).toBeRejected();
   });
 });

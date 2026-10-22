@@ -4,5 +4,5 @@
 !cloudbuild-patch.yaml
 !model/
 !model/candidates/
-!model/candidates/kinshasa-1000/
-!model/candidates/kinshasa-1000/**
+!model/candidates/kinshasa-2000/
+!model/candidates/kinshasa-2000/**

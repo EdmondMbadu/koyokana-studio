@@ -143,6 +143,7 @@ export interface TrainingRun {
   targetSteps?: number;
   adaptation?: 'full' | 'voice' | 'pronunciation';
   initialModel?: 'base' | 'first-voice';
+  cudnnV7Fallback?: boolean;
   recoveryOf?: string;
   recoveryRunId?: string;
   failureReason?: string;

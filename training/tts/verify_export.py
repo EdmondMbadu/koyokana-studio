@@ -11,7 +11,7 @@ import torch
 from safetensors import safe_open
 
 
-def verify(root, metadata, run_id, step):
+def verify(root, metadata, run_id, step, resume_step=None):
     marker = json.loads((root / 'succeeded.json').read_text())
     if not marker['training_complete'] or marker['last_training_step'] != step or marker['target_step'] != step:
         raise ValueError('The expected training run has not completed')
@@ -48,6 +48,13 @@ def verify(root, metadata, run_id, step):
     updates = [r['step'] for r in metrics if 'train_summed_losses' in r]
     if not updates or max(updates) != step:
         raise ValueError('Missing optimization history')
+    if resume_step is not None:
+        restore = json.loads((root / 'resume-loaded-0.json').read_text())
+        if (marker.get('recovered_from_step') != resume_step or restore['restored_step'] != resume_step
+                or len(restore['optimizers']) != 2
+                or any(o['max_step'] != resume_step or o['foreach'] is not False for o in restore['optimizers'])
+                or set(updates) != set(range(resume_step + 1, step + 1))):
+            raise ValueError('Optimizer recovery or remaining update history is incomplete')
     for record in metrics:
         if any(not math.isfinite(v) for k, v in record.items() if k.startswith(('train_', 'val_')) and isinstance(v, (int, float))):
             raise ValueError('Nonfinite training/evaluation metric')
@@ -75,7 +82,8 @@ if __name__ == '__main__':
     p.add_argument('--metadata', type=Path, required=True)
     p.add_argument('--run-id', required=True)
     p.add_argument('--step', type=int, required=True)
+    p.add_argument('--resume-step', type=int)
     args = p.parse_args()
-    result = verify(args.directory, json.loads(args.metadata.read_text()), args.run_id, args.step)
+    result = verify(args.directory, json.loads(args.metadata.read_text()), args.run_id, args.step, args.resume_step)
     (args.directory / 'export-validation.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result))

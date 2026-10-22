@@ -22,6 +22,7 @@ export const VOICE_PROFILES = [
 export const VOICE_MODELS = [
   { id: 'final', label: 'Final · 9,600 steps' },
   { id: 'kinshasa-1000', label: 'Kinshasa pronunciation trial · +1,000 steps' },
+  { id: 'kinshasa-2000', label: 'Kinshasa pronunciation trial 2 · +2,000 steps' },
   { id: 'step-2000', label: 'Earlier · 2,000 steps' },
   { id: 'step-4000', label: 'Earlier · 4,000 steps' },
   { id: 'step-6000', label: 'Earlier · 6,000 steps' },
@@ -32,6 +33,7 @@ export type VoiceModel = typeof VOICE_MODELS[number]['id'];
 const MODEL_SOURCES: Record<VoiceModel, { run: string; step: number }> = {
   final: { run: VOICE_RUN, step: 9600 },
   'kinshasa-1000': { run: 'tts-v2-kinshasa-r1', step: 1000 },
+  'kinshasa-2000': { run: 'tts-v2-kinshasa-r2-recovery-1', step: 2000 },
   'step-2000': { run: '157b3de4f137cb77eeb1', step: 2000 },
   'step-4000': { run: '157b3de4f137cb77eeb1', step: 4000 },
   'step-6000': { run: '157b3de4f137cb77eeb1', step: 6000 },

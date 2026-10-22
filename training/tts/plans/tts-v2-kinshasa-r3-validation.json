@@ -1,0 +1,140 @@
+{
+  "run_id": "tts-v2-kinshasa-r3",
+  "verified_at_utc": "2026-10-22T08:00:22.160820+00:00",
+  "state": "submitted",
+  "vertex_job": "projects/303635763719/locations/us-central1/customJobs/5315981567443599360",
+  "source_checkpoint": "gs://koyokana-studio.firebasestorage.app/runs/tts-v2-kinshasa-r2-recovery-1/checkpoints/attempt-0/checkpoint-2000",
+  "source_marker": {
+    "files": {
+      "model.safetensors": "200bee17352588908c562bb552ac0d2c3258f141410f26b4fcfedbe85e3a8b8c",
+      "model_1.safetensors": "33b54f859d0aa3102e0d80b2a01fc196cd0d7833dee3177bbd1e6010b96670ec",
+      "optimizer.bin": "6c32f964bfca41c7ffa3653b56152836c0dd8fe07ff255fb42b2d932121dfcb0",
+      "optimizer_1.bin": "41ca656875d00fbb0787f94c15a6501c57f5a497d55b90bca541ee875df9d162",
+      "random_states_0.pkl": "5653cc06e0a505df3e0903df3095a28b478c8174dd3376bfb8110c472b7751dd",
+      "scheduler.bin": "177bb224473b19ab7f0334463a75bfd0e0d8e266a443d303970f8a9e796da19f",
+      "scheduler_1.bin": "48f164076f98642c0e5ba89b1cca36aa64f980489a159bd43d1adf7a5caa6df8"
+    },
+    "step": 2000
+  },
+  "resume_step": 2000,
+  "target_step": 2500,
+  "additional_steps": 500,
+  "comparison_steps": [
+    2000,
+    2250,
+    2500
+  ],
+  "checkpoint_interval": 250,
+  "trainer_image": "sha256:e131d5bd03109df60dc196533d714d08b0ca7d5d5d1f94529fee9bca0b22a144",
+  "cudnn_v7_fallback": true,
+  "timeout_seconds": 5400,
+  "dataset_unchanged": true,
+  "word_reweighting": false,
+  "automatic_quality_promotion": false,
+  "human_quality_evaluation": "pending",
+  "current_preferred_model": "kinshasa-2000",
+  "benchmark": {
+    "delivery": "gentle",
+    "seed": 456,
+    "primary": {
+      "text": "Soki oyoki ngai malamu, loba mbote.",
+      "kind": "unseen-user-diagnostic",
+      "emphasis_targets": {
+        "loba": "LO-ba",
+        "mbote": "MBO-te"
+      }
+    },
+    "secondary": {
+      "text": "Mbote baninga, lelo tozali komeka mongongo na ngai.",
+      "kind": "unseen-user-diagnostic",
+      "words": [
+        "baninga",
+        "lelo",
+        "ngai"
+      ]
+    },
+    "held_out": [
+      {
+        "id": "0wFbC0KWA4XNf3OauBHa",
+        "text": "Motema na ngai etondi esengo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "1jX8JpM4jDqKdroWG0fj",
+        "text": "Lelo na ntongo, nakendaki na zando ya Gambela, kasi biloko ezalaki mingi te mpe ntalo ezalaki makasi.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "KzJOUZ3v4g9YsxzHQHvZ",
+        "text": "Benga ngai na nimero zéro huit quatre, quatre trois cinq, un un, neuf cinq.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "L9ErjyAORI7ayFpdB3kR",
+        "text": "Benga ngai nsima ya midi.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "QSzxokUEqjXNlst8af20",
+        "text": "Mosala ya lelo esili malamu.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "WRWvWyQl7lqdeNSeHAjk",
+        "text": "Ozwi message na ngai?",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "Z6TRiIxfGOerIJTjCHlR",
+        "text": "Nateki mbisi zomi na mibale lelo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "ousoZmLZvzC9xAbTh1hu",
+        "text": "Mbote, oyo ezali Koyokana.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "Zhy11Tvkp4k8JjLQqLGV",
+        "text": "Mbote yaya, olamuki malamu?",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "0pBPJpWJkNvFS2bl5aSf",
+        "text": "Nakotinda yo message sikoyo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "4poGmCmC5hXKczEpOznc",
+        "text": "Nazali na etalaji na zando ya Matete.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "7xT8RnuZW9ulCvH4bxaJ",
+        "text": "Kokamwa te, bomoi ezali bongo.",
+        "kind": "held-out",
+        "source_split": "eval"
+      },
+      {
+        "id": "9ZE1KEgag44zWy5JFY0g",
+        "text": "Dossier na yo ezali naino na kotalama.",
+        "kind": "held-out",
+        "source_split": "eval"
+      }
+    ],
+    "universal_stress_rule_applied": false,
+    "native_listening_required": true
+  },
+  "new_model_not_yet_available_on_voice_page": true
+}

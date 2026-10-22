@@ -11,7 +11,7 @@ describe('trainingCommand', () => {
     expect(command).toContain('--max-steps=3000');
   });
   it('preserves the recovery checkpoint and absolute target instead of starting over', () => {
-    const command = trainingCommand({ id: 'recovery1', name: 'Recovery', task: 'tts', timeoutSeconds: 14400,
+    const command = trainingCommand({ id: 'recovery1', name: 'Recovery', task: 'tts', timeoutSeconds: 14400, cudnnV7Fallback: true,
       resumeFrom: 'gs://bucket/runs/original/checkpoints/checkpoint-8000', targetSteps: 9600, checkpointEverySteps: 200,
       hyperparams: { epochs: 100, batchSize: 8, learningRate: 2e-5 } } as TrainingRun,
       { projectId: 'project', region: 'us-central1', artifactRepo: 'repo' },
@@ -19,6 +19,8 @@ describe('trainingCommand', () => {
     expect(command).toContain('--resume-from=gs://bucket/runs/original/checkpoints/checkpoint-8000');
     expect(command).toContain('--max-steps=9600');
     expect(command).toContain('--save-steps=200');
+    const spec = JSON.parse(command.split('\n').slice(1, command.split('\n').indexOf('KOYOKANA_JOB_SPEC')).join('\n'));
+    expect(spec.workerPoolSpecs[0].containerSpec.env).toEqual([{ name: 'TORCH_CUDNN_V8_API_DISABLED', value: '1' }]);
   });
   it('preserves an approved eight-hour limit', () => {
     const run = { id: 'run1', name: 'full run', task: 'tts', timeoutSeconds: 28800,

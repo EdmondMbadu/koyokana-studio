@@ -1,0 +1,46 @@
+{
+  "serviceAccount": "tts-trainer@koyokana-studio.iam.gserviceaccount.com",
+  "scheduling": {
+    "timeout": "5400s",
+    "restartJobOnWorkerRestart": false
+  },
+  "workerPoolSpecs": [
+    {
+      "machineSpec": {
+        "machineType": "g2-standard-8",
+        "acceleratorType": "NVIDIA_L4",
+        "acceleratorCount": 1
+      },
+      "replicaCount": 1,
+      "diskSpec": {
+        "bootDiskType": "pd-ssd",
+        "bootDiskSizeGb": 100
+      },
+      "containerSpec": {
+        "imageUri": "us-central1-docker.pkg.dev/koyokana-studio/koyokana/tts-train@sha256:e131d5bd03109df60dc196533d714d08b0ca7d5d5d1f94529fee9bca0b22a144",
+        "args": [
+          "--manifest=gs://koyokana-studio.firebasestorage.app/datasets/tts-v1/manifest.jsonl",
+          "--base-model=UBC-NLP/Simba-TTS-lin",
+          "--epochs=11",
+          "--learning-rate=0.000005",
+          "--batch-size=8",
+          "--max-steps=2500",
+          "--save-steps=250",
+          "--adaptation=pronunciation",
+          "--initial-model=first-voice",
+          "--sample-device=cpu",
+          "--cuda-retries=1",
+          "--output=gs://koyokana-studio.firebasestorage.app/runs/tts-v2-kinshasa-r3/",
+          "--run-id=tts-v2-kinshasa-r3",
+          "--resume-from=gs://koyokana-studio.firebasestorage.app/runs/tts-v2-kinshasa-r2-recovery-1/checkpoints/attempt-0/checkpoint-2000"
+        ],
+        "env": [
+          {
+            "name": "TORCH_CUDNN_V8_API_DISABLED",
+            "value": "1"
+          }
+        ]
+      }
+    }
+  ]
+}

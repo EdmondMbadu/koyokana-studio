@@ -33,6 +33,7 @@ export function trainingCommand(
       diskSpec: { bootDiskType: 'pd-ssd', bootDiskSizeGb: 100 },
       containerSpec: {
         imageUri: run.trainerImage || trainingImage(run.task, cloud),
+        ...(run.cudnnV7Fallback ? { env: [{ name: 'TORCH_CUDNN_V8_API_DISABLED', value: '1' }] } : {}),
         args: [
           `--manifest=${run.manifestUri}`, `--base-model=${run.baseModel}`,
           `--epochs=${run.hyperparams.epochs}`, `--learning-rate=${run.hyperparams.learningRate}`,
