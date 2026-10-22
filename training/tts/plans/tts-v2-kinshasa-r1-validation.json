@@ -1,16 +1,16 @@
 {
-  "verified_at_utc": "2026-10-22T05:14:57.230255+00:00",
-  "status": "delivery_live_pronunciation_experiment_submitted",
+  "verified_at_utc": "2026-10-22T06:03:16.656957+00:00",
+  "status": "live_typed_text_and_playback_verified",
   "human_naturalness_and_dialect_evaluation": "pending",
   "selected_goal": "Kinshasa Lingala pronunciation",
   "source_dataset": "tts-v1",
   "new_recordings": 0,
   "source_model": "157b3de4f137cb77eeb1-recovery-1, step 9600",
   "serving": {
-    "version": "v1.1.2",
-    "build": "60c1c633-31c4-44a8-91a2-8f7d02ed4ef3",
-    "image_digest": "sha256:ee87001492db9c7c880bf25aab09df86efb464862d1590617560ac905db71c52",
-    "revision": "tts-serve-00004-4x6",
+    "version": "v1.2.0",
+    "build": "840ed57f-b87f-475d-b697-9002776bdee0",
+    "image_digest": "sha256:9ee033461325bf34dd844ccd1096c930b06d296d6a7d5970a9ce17717b629b36",
+    "revision": "tts-serve-00005-6m4",
     "default_profile": "gentle",
     "runtime_attributes_verified": true,
     "model_and_profile_cache_isolation_verified": true,
@@ -20,6 +20,23 @@
       "generation_seconds": 5.5,
       "playback_ended": true,
       "playback_error": null
+    },
+    "browser_pronunciation_gentle": {
+      "model": "kinshasa-1000",
+      "profile": "gentle",
+      "text": "Soki oyoki ngai malamu, loba mbote.",
+      "duration_seconds": 4.472,
+      "generation_seconds": 6.59,
+      "playback_ended": true,
+      "playback_error": null,
+      "selected_source_verified_by_client_guard": true
+    },
+    "resource_limits_preserved": {
+      "cpu": 2,
+      "memory": "4Gi",
+      "max_instances": 1,
+      "concurrency": 1,
+      "timeout_seconds": 55
     }
   },
   "tests": {
@@ -30,12 +47,15 @@
     "real_fresh_training_resume_export_and_both_adaptation_modes": "passed",
     "real_inference_all_five_checkpoints": "passed",
     "comparison_wavs": 70,
-    "prompts_with_three_distinct_delivery_outputs": 10
+    "prompts_with_three_distinct_delivery_outputs": 10,
+    "real_inference_all_six_voice_versions": "passed",
+    "new_voice_gentle_inference": "passed",
+    "release_angular_voice_tests": 8
   },
   "training": {
     "run_id": "tts-v2-kinshasa-r1",
     "job": "projects/303635763719/locations/us-central1/customJobs/2987444638232608768",
-    "state_last_checked": "JOB_STATE_PENDING",
+    "state_last_checked": "JOB_STATE_SUCCEEDED",
     "build": "6d73a195-e07d-498a-b0b5-1a7263573ccf",
     "image_digest": "sha256:e131d5bd03109df60dc196533d714d08b0ca7d5d5d1f94529fee9bca0b22a144",
     "initial_model": "first-voice",
@@ -44,9 +64,59 @@
     "learning_rate": 5e-06,
     "checkpoint_steps": 250,
     "timeout_seconds": 5400,
-    "automatic_quality_promotion": false
+    "automatic_quality_promotion": false,
+    "finished_at_utc": "2026-10-22T05:42:41Z"
   },
   "comparison_index_sha256": "00bcef309168e092a0736cc44e71ef0a067e0dd1ad579b7670f42d8a2df10559",
-  "new_model_integration": "Staged; do not deploy the additional model choice until the completed export and real inference pass verification.",
-  "blocked_on": "Vertex GPU allocation and completion of the queued experiment"
+  "new_model_integration": "Live explicit voice version choice, typed sentence generated and played to completion. Prior model remains the default pending human comparison.",
+  "blocked_on": null,
+  "export_validation": {
+    "run_id": "tts-v2-kinshasa-r1",
+    "step": 1000,
+    "training_complete": true,
+    "tensor_count": 836,
+    "wav_count": 119,
+    "frozen_weights_verified": true,
+    "warm_source_verified": true,
+    "human_quality_evaluation": "pending"
+  },
+  "independent_export_weight_comparison": {
+    "passed": true,
+    "export_roundoff_tolerance": {
+      "atol": 1e-07,
+      "rtol": 1e-06
+    },
+    "modules": {
+      "decoder": {
+        "tensors": 155,
+        "changed": 76,
+        "max_abs": 5.960464477539063e-08
+      },
+      "discriminator": {
+        "tensors": 74,
+        "changed": 74,
+        "max_abs": 0.0026405639946460724
+      },
+      "duration_predictor": {
+        "tensors": 284,
+        "changed": 284,
+        "max_abs": 0.001057744026184082
+      },
+      "flow": {
+        "tensors": 112,
+        "changed": 112,
+        "max_abs": 0.0009243488311767578
+      },
+      "posterior_encoder": {
+        "tensors": 100,
+        "changed": 0,
+        "max_abs": 0.0
+      },
+      "text_encoder": {
+        "tensors": 111,
+        "changed": 111,
+        "max_abs": 0.0014513731002807617
+      }
+    }
+  }
 }
